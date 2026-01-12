@@ -614,26 +614,32 @@
     }
 
     function buildShareUrl(){
-      const payload = JSON.stringify(buildSharePayload());
-      const token = b64urlEncode(payload);
-      const base = location.origin + location.pathname;
-      return base + "#i=" + token;
-    }
+  const payload = JSON.stringify(buildSharePayload());
+  const token = b64urlEncode(payload);
+  const base = location.origin + location.pathname;
+  return base + "?i=" + token;
+}
 
-    function readImportTokenFromHash(){
-      const h = location.hash || "";
-      const m = h.match(/[#&]i=([^&]+)/);
-      return m ? m[1] : null;
-    }
+   function readImportToken(){
+  const qs = new URLSearchParams(location.search || "");
+  const qi = qs.get("i");
+  if (qi) return qi;
 
+  const h = location.hash || "";
+  const m = h.match(/[#&]i=([^&]+)/);
+  return m ? m[1] : null;
+}
     function clearImportToken(){
-      history.replaceState(null, "", location.pathname + location.search);
-    }
+  const url = new URL(location.href);
+  url.searchParams.delete("i");
+  url.hash = ""; // por compatibilidad si venía en hash
+  history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+}
 
     let pendingImportToken = null;
 
     function maybePromptImport(){
-      const t = readImportTokenFromHash();
+      const t = readImportToken();
       if (!t) return;
 
       pendingImportToken = t;
