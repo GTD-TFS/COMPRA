@@ -19,11 +19,9 @@
        ========================================================= -->
   <meta property="og:title" content="Lista de la compra" />
   <meta property="og:description" content="Toca para abrir la lista en la app (reemplaza la lista actual tras confirmación)." />
-  <!-- Cambia esta imagen por una tuya en el repo (recomendado) -->
   <meta property="og:image" content="icon-512.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-
 
   <!-- (Opcional) PWA Manifest: crea manifest.json aparte cuando quieras -->
   <!-- <link rel="manifest" href="manifest.json"> -->
@@ -45,7 +43,7 @@
       --radius:16px;
       --gap:12px;
       --max:980px;
-      --tap:44px; /* tamaño mínimo recomendado para toque */
+      --tap:44px;
     }
 
     *{box-sizing:border-box}
@@ -62,7 +60,6 @@
                env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
-    /* Contenedor principal */
     .app{
       max-width:var(--max);
       margin:0 auto;
@@ -73,7 +70,6 @@
       min-height:100%;
     }
 
-    /* Topbar */
     .topbar{
       display:flex;
       align-items:center;
@@ -95,7 +91,6 @@
       font-size:11px;
     }
 
-    /* Botones base */
     .btn{
       min-height:var(--tap);
       padding:10px 12px;
@@ -123,7 +118,6 @@
       border-color:rgba(255,79,79,.30);
     }
 
-    /* Área de pantallas (Inicio / Buscar / Lista) */
     .screen{
       display:none;
       border:1px solid var(--edge);
@@ -134,29 +128,9 @@
     }
     .screen.is-active{display:block}
 
-    /* Títulos de sección */
     .h1{margin:2px 0 10px; font-size:18px; font-weight:800}
     .hint{margin:0 0 12px; color:var(--muted)}
 
-    /* Inicio */
-    .home-actions{
-      display:grid;
-      grid-template-columns:1fr;
-      gap:12px;
-    }
-    @media(min-width:720px){
-      .home-actions{grid-template-columns:1fr 1fr}
-    }
-    .card{
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:18px;
-      padding:14px;
-      background:rgba(0,0,0,.12);
-    }
-    .card .title{font-weight:800; font-size:16px; margin:0 0 6px}
-    .card .desc{color:var(--muted); margin:0 0 12px}
-
-    /* Buscar */
     .searchbar{
       display:flex; gap:10px; align-items:center;
       margin-bottom:12px;
@@ -173,7 +147,6 @@
     }
     .input::placeholder{color:rgba(255,255,255,.45)}
 
-    /* Grid de productos */
     .grid{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
@@ -219,7 +192,6 @@
       text-overflow:ellipsis;
     }
 
-    /* Opción "Añadir lo escrito" */
     .add-free{
       margin-top:12px;
       padding:12px;
@@ -235,7 +207,6 @@
     .add-free .text{color:var(--muted)}
     .add-free strong{color:var(--txt)}
 
-    /* Lista */
     .list{
       display:flex;
       flex-direction:column;
@@ -277,7 +248,6 @@
       font-weight:800;
     }
 
-    /* Barra inferior fija: solo dos modos (Buscar / Lista) */
     .bottombar{
       position:fixed;
       left:0; right:0;
@@ -299,11 +269,6 @@
       font-weight:800;
     }
 
-    /* =========================================================
-       PANEL DETALLE (Bottom Sheet)
-       - Se usa tanto desde Buscar como desde Lista
-       - Cierra y vuelve al origen automáticamente
-       ========================================================= */
     .sheet-backdrop{
       position:fixed;
       inset:0;
@@ -400,7 +365,6 @@
     }
     .sheet-actions .btn{flex:1}
 
-    /* Diálogo simple (confirmación borrar lista) */
     dialog{
       border:none;
       border-radius:18px;
@@ -421,50 +385,17 @@
 
 <body>
   <main class="app">
-    <!-- =========================================================
-         TOPBAR — Título y estado
-         * IMPORTANTE: aquí NO metemos navegación para no duplicar
-           la barra inferior (móvil).
-         ========================================================= -->
     <header class="topbar">
       <div class="brand">
         <span>Lista</span>
         <small id="appStatus">offline/online</small>
       </div>
-
-      <!-- Hueco para futuras acciones globales sin tocar otras zonas -->
     </header>
 
     <!-- =========================================================
-         SCREEN: INICIO
-         - Dos accesos grandes: Buscar / Lista
+         SCREEN: BUSCAR (pantalla por defecto)
          ========================================================= -->
-    <section id="screenHome" class="screen is-active" aria-label="Inicio">
-      <div class="h1">Inicio</div>
-      <p class="hint">Elige qué quieres hacer.</p>
-
-      <div class="home-actions">
-        <div class="card">
-          <p class="title">Buscar productos</p>
-          <p class="desc">Escribe o busca por fotos. Añade sin salir del buscador.</p>
-          <button class="btn primary" type="button" data-nav="search">Ir a Buscar</button>
-        </div>
-
-        <div class="card">
-          <p class="title">Ver lista</p>
-          <p class="desc">Revisa lo añadido, ajusta cantidades y elimina la lista si hace falta.</p>
-          <button class="btn primary" type="button" data-nav="list">Ir a Lista</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================================================
-         SCREEN: BUSCAR
-         - Input siempre visible
-         - Grid visual
-         - "Fuera de lista": añadir texto escrito si no hay resultado
-         ========================================================= -->
-    <section id="screenSearch" class="screen" aria-label="Buscar">
+    <section id="screenSearch" class="screen is-active" aria-label="Buscar">
       <div class="h1">Buscar</div>
 
       <div class="searchbar">
@@ -473,10 +404,8 @@
         <button id="btnClearSearch" class="btn ghost" type="button" title="Limpiar">Limpiar</button>
       </div>
 
-      <!-- Grid de resultados (productos con imagen) -->
       <div id="productGrid" class="grid" role="list" aria-label="Resultados"></div>
 
-      <!-- Opción: añadir texto libre ("fuera de lista") -->
       <div id="addFreeBox" class="add-free" aria-live="polite">
         <div class="text">
           No se encontró coincidencia. Añadir: <strong id="freeText"></strong>
@@ -491,18 +420,16 @@
 
     <!-- =========================================================
          SCREEN: LISTA
-         - Orden de inserción
-         - Foto+nombre+cantidad / texto+cantidad si "fuera de lista"
-         - Botón "Eliminar lista" con confirmación
          ========================================================= -->
     <section id="screenList" class="screen" aria-label="Lista">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
         <div class="h1" style="margin:0">Lista</div>
         <div style="display:flex; gap:10px; align-items:center;">
-        <button id="btnShareList" class="btn ghost" type="button">Compartir</button>
-        <button id="btnDeleteList" class="btn danger" type="button">Eliminar lista</button>
+          <button id="btnShareList" class="btn ghost" type="button">Compartir</button>
+          <button id="btnDeleteList" class="btn danger" type="button">Eliminar lista</button>
+        </div>
       </div>
-      </div>
+
       <p class="hint">El primer producto añadido aparece el primero.</p>
 
       <div id="shoppingList" class="list" aria-label="Productos en la lista"></div>
@@ -515,9 +442,6 @@
 
   <!-- =========================================================
        BOTTOM BAR — Navegación fija (Buscar / Lista)
-       - Para móvil: siempre visible, evita “volver atrás”
-       - El Inicio se alcanza entrando por primera vez o con gesto back del SO
-         (si quieres un botón "Inicio", se añade aquí sin tocar pantallas)
        ========================================================= -->
   <nav class="bottombar" aria-label="Navegación">
     <div class="bottombar-inner">
@@ -527,10 +451,7 @@
   </nav>
 
   <!-- =========================================================
-       SHEET DETALLE — Reutilizable desde Buscar y desde Lista
-       Contrato:
-       - openDetail({ name, img, qty, mode })
-       - mode: "add" (desde buscar) o "edit" (desde lista)
+       SHEET DETALLE
        ========================================================= -->
   <div id="detailBackdrop" class="sheet-backdrop" role="presentation">
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Detalle del producto">
@@ -541,7 +462,6 @@
 
       <div class="sheet-body">
         <div class="sheet-photo" id="detailPhoto">
-          <!-- imagen grande si existe -->
           <span id="detailPhotoFallback">SIN FOTO</span>
         </div>
 
@@ -555,7 +475,6 @@
             </div>
           </div>
 
-          <!-- Zona reservada para info futura sin tocar el layout -->
           <div class="row" id="detailInfoRow" style="display:none">
             <div class="k">Info</div>
             <div id="detailInfo" style="font-weight:800"></div>
@@ -590,7 +509,6 @@
 
   <!-- =========================================================
        DIALOG: Confirmación importar lista (reemplaza la actual)
-       Se abre automáticamente si la URL trae #i=...
        ========================================================= -->
   <dialog id="dlgImportList">
     <div class="dlg">
@@ -603,23 +521,12 @@
     </div>
   </dialog>
 
-  <!-- =========================================================
-       SCRIPT — Sin Firebase aún. Arquitectura preparada para añadirlo.
-       Principios:
-       - Un único “estado” central (state)
-       - Render por funciones puras (renderSearch / renderList)
-       - Contratos DOM estables (IDs arriba). Si cambias UI, no rompes lógica.
-       - Catálogo abierto: productos con foto + texto libre fuera de lista
-       ========================================================= -->
   <script type="module">
     /* =========================================================
-       1) CONFIG (fácil de tocar sin tocar lógica)
+       1) CONFIG
        ========================================================= */
     const CONFIG = {
-      // Carpeta donde pondrás tus screenshots
       imageBasePath: "./images/",
-      // Catálogo inicial (ejemplo). Puedes ampliarlo sin tocar lógica.
-      // name: se muestra y se usa para búsqueda. img: nombre de archivo (opcional).
       catalog: [
         { name: "LECHE", img: "leche.jpg" },
         { name: "PAN", img: "panintegral.jpg" },
@@ -634,19 +541,12 @@
     };
 
     /* =========================================================
-       2) ESTADO CENTRAL (una sola fuente de verdad)
-       - En el futuro, Firebase “rellena” y “escucha” este estado.
+       2) ESTADO CENTRAL
        ========================================================= */
     const state = {
-      // navegación
-      activeScreen: "home", // "home" | "search" | "list"
-      // búsqueda
+      activeScreen: "search", // "search" | "list"
       searchText: "",
-      // lista (orden de inserción)
-      items: [
-        // { id, name, qty, img? , order }
-      ],
-      // detalle
+      items: [],
       detail: {
         isOpen: false,
         origin: "search", // "search" | "list"
@@ -659,25 +559,25 @@
     };
 
     /* =========================================================
-   2.1) PERSISTENCIA LOCAL (mínimo)
-   ========================================================= */
-const STORAGE_KEY = "compra_list_v1";
+       2.1) PERSISTENCIA LOCAL
+       ========================================================= */
+    const STORAGE_KEY = "compra_list_v1";
 
-function saveStateToStorage(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
-}
+    function saveStateToStorage(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
+    }
 
-function loadStateFromStorage(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data && Array.isArray(data.items)) state.items = data.items;
-  }catch(_){}
-}
+    function loadStateFromStorage(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data && Array.isArray(data.items)) state.items = data.items;
+      }catch(_){}
+    }
 
     /* =========================================================
-       3) UTILIDADES (pequeñas y aisladas)
+       3) UTILIDADES
        ========================================================= */
     const $ = (sel, root=document) => root.querySelector(sel);
 
@@ -693,14 +593,10 @@ function loadStateFromStorage(){
     };
 
     const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
-
     const imgUrl = (imgName) => imgName ? (CONFIG.imageBasePath + imgName) : null;
 
     /* =========================================================
        3.1) COMPARTIR / IMPORTAR POR ENLACE (sin backend)
-       - Compartir: generamos un enlace con #i=PAYLOAD
-       - Importar: al abrir ese enlace, pedimos confirmación (B) y reemplazamos lista
-       Nota: el payload NO incluye fotos (solo el nombre de archivo), porque las fotos viven en la app.
        ========================================================= */
     function b64urlEncode(str){
       const b64 = btoa(unescape(encodeURIComponent(str)));
@@ -734,8 +630,23 @@ function loadStateFromStorage(){
       history.replaceState(null, "", location.pathname + location.search);
     }
 
+    let pendingImportToken = null;
+
+    function maybePromptImport(){
+      const t = readImportTokenFromHash();
+      if (!t) return;
+
+      pendingImportToken = t;
+
+      render();
+      const dlg = document.getElementById("dlgImportList");
+      if (dlg && typeof dlg.showModal === "function"){
+        dlg.showModal();
+      }
+    }
+
     /* =========================================================
-       4) NAVEGACIÓN (solo cambia state.activeScreen)
+       4) NAVEGACIÓN
        ========================================================= */
     function navTo(screen){
       state.activeScreen = screen;
@@ -743,10 +654,9 @@ function loadStateFromStorage(){
     }
 
     /* =========================================================
-       5) RENDER: pantalla activa + subrenders
+       5) RENDER
        ========================================================= */
     function render(){
-      $("#screenHome").classList.toggle("is-active", state.activeScreen === "home");
       $("#screenSearch").classList.toggle("is-active", state.activeScreen === "search");
       $("#screenList").classList.toggle("is-active", state.activeScreen === "list");
 
@@ -790,7 +700,6 @@ function loadStateFromStorage(){
       wrap.innerHTML = "";
 
       const items = [...state.items].sort((a,b)=>a.order-b.order);
-
       $("#emptyListHint").style.display = items.length ? "none" : "block";
 
       for (const it of items){
@@ -855,7 +764,7 @@ function loadStateFromStorage(){
     }
 
     /* =========================================================
-       6) ACCIONES: abrir/cerrar detalle (origen recordado)
+       6) DETALLE
        ========================================================= */
     function openDetailFromSearch(p){
       state.detail = { isOpen:true, origin:"search", mode:"add", itemId:null, name:p.name, img:p.img||null, qty:1 };
@@ -875,12 +784,12 @@ function loadStateFromStorage(){
     }
 
     /* =========================================================
-       7) MUTACIONES SOBRE LA LISTA (único sitio donde se toca state.items)
-       En el futuro aquí se conectan las llamadas a Firebase.
+       7) MUTACIONES SOBRE LA LISTA
        ========================================================= */
     function addItem({ name, img=null, qty=1 }){
       const order = state.items.length ? Math.max(...state.items.map(x=>x.order)) + 1 : 1;
       state.items.push({ id: uid(), name: norm(name), img, qty: Math.max(1, qty|0), order });
+      saveStateToStorage();
       render();
     }
 
@@ -888,21 +797,24 @@ function loadStateFromStorage(){
       const it = state.items.find(x=>x.id===id);
       if (!it) return;
       if (patch.qty != null) it.qty = Math.max(1, patch.qty|0);
+      saveStateToStorage();
       render();
     }
 
     function deleteItem(id){
       state.items = state.items.filter(x=>x.id!==id);
+      saveStateToStorage();
       render();
     }
 
     function clearList(){
       state.items = [];
+      saveStateToStorage();
       render();
     }
 
     /* =========================================================
-       8) EVENTOS DOM (wiring en un solo lugar)
+       8) EVENTOS DOM
        ========================================================= */
     document.addEventListener("click", (ev)=>{
       const b = ev.target.closest("[data-nav]");
@@ -938,6 +850,7 @@ function loadStateFromStorage(){
       state.detail.qty = Math.max(1, state.detail.qty - 1);
       renderDetail();
     });
+
     $("#btnQtyPlus").addEventListener("click", ()=>{
       state.detail.qty = state.detail.qty + 1;
       renderDetail();
@@ -946,10 +859,10 @@ function loadStateFromStorage(){
     $("#btnConfirmDetail").addEventListener("click", ()=>{
       if (state.detail.mode === "add"){
         addItem({ name: state.detail.name, img: state.detail.img, qty: state.detail.qty });
-        closeDetail(); // vuelve al origen (Buscar)
+        closeDetail();
       }else{
         updateItem(state.detail.itemId, { qty: state.detail.qty });
-        closeDetail(); // vuelve al origen (Lista)
+        closeDetail();
       }
     });
 
@@ -959,8 +872,6 @@ function loadStateFromStorage(){
       closeDetail();
     });
 
-
-    // Compartir lista (WhatsApp / compartir nativo / copiar)
     $("#btnShareList").addEventListener("click", async ()=>{
       const url = buildShareUrl();
 
@@ -969,9 +880,7 @@ function loadStateFromStorage(){
           await navigator.share({ title: "Lista de la compra", text: "Abre esta lista en la app:", url });
           return;
         }
-      }catch(e){
-        // cancelado por el usuario: no hacemos nada
-      }
+      }catch(e){}
 
       try{
         await navigator.clipboard.writeText(url);
@@ -984,29 +893,37 @@ function loadStateFromStorage(){
     $("#btnDeleteList").addEventListener("click", ()=>{
       $("#dlgDeleteList").showModal();
     });
+
     $("#dlgCancel").addEventListener("click", ()=>$("#dlgDeleteList").close());
+
     $("#dlgConfirm").addEventListener("click", ()=>{
       $("#dlgDeleteList").close();
       clearList();
     });
 
-    // Importar lista (confirmación B)
     $("#dlgImportCancel").addEventListener("click", ()=>{
       $("#dlgImportList").close();
+      pendingImportToken = null;
       clearImportToken();
-      render();
+      navTo("search");
     });
+
     $("#dlgImportConfirm").addEventListener("click", ()=>{
       $("#dlgImportList").close();
-      const token = readImportTokenFromHash();
+
+      const token = pendingImportToken || readImportTokenFromHash();
+      pendingImportToken = null;
+
       if (!token){
         clearImportToken();
-        render();
+        navTo("search");
         return;
       }
+
       try{
         const jsonStr = b64urlDecode(token);
         const payload = JSON.parse(jsonStr);
+
         if (payload && payload.v === 1 && Array.isArray(payload.items)){
           state.items = payload.items;
           saveStateToStorage();
@@ -1016,66 +933,30 @@ function loadStateFromStorage(){
       }catch(e){
         alert("No se pudo importar la lista (enlace inválido).");
       }
+
       clearImportToken();
       navTo("list");
     });
 
-
-
     window.addEventListener("online", render);
     window.addEventListener("offline", render);
 
-   /* =========================================================
-   9) ARRANQUE
-   ========================================================= */
-function boot(){
+    // Si el link se abre con la app ya viva, esto lo hace fiable:
+    window.addEventListener("hashchange", maybePromptImport);
+    window.addEventListener("pageshow", maybePromptImport);
 
-  // 1) Si hay importación por enlace (#i=...), NO dependemos de lo local.
-  const m = (location.hash || "").match(/[#&]i=([^&]+)/);
-  const importToken = m ? m[1] : null;
-
-  if (importToken){
-
-    // Si existe un diálogo de importación (modo B), úsalo.
-    const dlg = document.getElementById("dlgImportList");
-    if (dlg && typeof dlg.showModal === "function"){
-      render();          // pinta base
-      dlg.showModal();   // confirmación B
-      return;
+    /* =========================================================
+       9) ARRANQUE
+       - Normal: Buscar
+       - Con enlace #i=...: pide importación y tras Continuar -> Lista
+       ========================================================= */
+    function boot(){
+      loadStateFromStorage();
+      state.activeScreen = "search";
+      render();
+      maybePromptImport();
     }
-
-    // Fallback mínimo: confirmación B sin diálogo
-    render();
-    const ok = confirm("Esta lista sustituirá la lista actual. ¿Continuar?");
-    if (!ok){
-      history.replaceState(null, "", location.pathname + location.search);
-      return;
-    }
-
-    try{
-      const b64 = importToken.replace(/-/g, "+").replace(/_/g, "/");
-      const pad = b64.length % 4 ? "=".repeat(4 - (b64.length % 4)) : "";
-      const jsonStr = decodeURIComponent(escape(atob(b64 + pad)));
-      const payload = JSON.parse(jsonStr);
-
-      if (payload && Array.isArray(payload.items)){
-        state.items = payload.items;
-        if (typeof saveStateToStorage === "function") saveStateToStorage();
-      }
-    }catch(e){
-      alert("No se pudo importar la lista (enlace inválido).");
-    }
-
-    history.replaceState(null, "", location.pathname + location.search);
-    navTo("list");
-    return;
-  }
-
-  // 2) Arranque normal: cargar local (si existe) y renderizar
-  if (typeof loadStateFromStorage === "function") loadStateFromStorage();
-  render();
-}
-
-boot();  </script>
+    boot();
+  </script>
 </body>
 </html>
