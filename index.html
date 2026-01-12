@@ -980,7 +980,7 @@
     });
     $("#dlgImportConfirm").addEventListener("click", ()=>{
       $("#dlgImportList").close();
-      const token = readImportTokenFromHash();
+      const token = window.__IMPORT_TOKEN__;
       if (!token){
         clearImportToken();
         render();
@@ -1016,6 +1016,7 @@
     const importToken = m ? m[1] : null;
 
     if (importToken){
+      window.__IMPORT_TOKEN__ = importToken;
       // Si existe un diálogo de importación (modo B), úsalo.
       const dlg = document.getElementById("dlgImportList");
       if (dlg && typeof dlg.showModal === "function"){
