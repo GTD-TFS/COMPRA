@@ -1010,6 +1010,57 @@
     /* =========================================================
        9) ARRANQUE
        ========================================================= */
+
+    // 1) Si hay importación por enlace (#i=...), NO dependemos de lo local.
+    const m = (location.hash || "").match(/[#&]i=([^&]+)/);
+    const importToken = m ? m[1] : null;
+
+    if (importToken){
+      // Si existe un diálogo de importación (modo B), úsalo.
+      const dlg = document.getElementById("dlgImportList");
+      if (dlg && typeof dlg.showModal === "function"){
+        render();          // pinta base
+        dlg.showModal();   // confirmación B
+        // El resto (Continuar/Cancelar) lo resuelves con los handlers del diálogo.
+        // Si no tienes handlers, abajo tienes fallback automático.
+        return;
+      }
+
+      // Fallback mínimo: confirmación B sin diálogo
+      render();
+      const ok = confirm("Esta lista sustituirá la lista actual. ¿Continuar?");
+      if (!ok){
+        // Evita re-importar al recargar
+        history.replaceState(null, "", location.pathname + location.search);
+        return;
+      }
+
+      try{
+        // Decode Base64URL -> JSON
+        const b64 = importToken.replace(/-/g, "+").replace(/_/g, "/");
+        const pad = b64.length % 4 ? "=".repeat(4 - (b64.length % 4)) : "";
+        const jsonStr = decodeURIComponent(escape(atob(b64 + pad)));
+        const payload = JSON.parse(jsonStr);
+
+        if (payload && Array.isArray(payload.items)){
+          // Reemplazo total
+          state.items = payload.items;
+
+          if (typeof saveStateToStorage === "function") saveStateToStorage();
+        }
+      }catch(e){
+        alert("No se pudo importar la lista (enlace inválido).");
+      }
+
+      // Limpia hash y muestra lista
+      history.replaceState(null, "", location.pathname + location.search);
+      if (typeof navTo === "function") navTo("list");
+      else render();
+      return;
+    }
+
+    // 2) Arranque normal: cargar local (si existe) y renderizar
+    if (typeof loadStateFromStorage === "function") loadStateFromStorage();
     render();
   </script>
 </body>
