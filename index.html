@@ -1,35 +1,19 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <!-- =========================================================
-       LISTA COMPARTIDA (PWA) — Estructura base, clara y extensible
-       - Sin Firebase aún (se integra después sin reestructurar UI)
-       - Mobile-first, accesible, sin dependencias
-       - Diseñada para no “tocar mil zonas” al iterar
-       ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0b1220" />
   <title>Lista • PWA</title>
 
-  <!-- =========================================================
-       METADATOS PARA WHATSAPP (TARJETA)
-       - WhatsApp usa Open Graph para mostrar una tarjeta bonita.
-       - El payload de importación va en el hash (#...), que el crawler no necesita.
-       ========================================================= -->
   <meta property="og:title" content="Lista de la compra" />
   <meta property="og:description" content="Toca para abrir la lista en la app (reemplaza la lista actual tras confirmación)." />
   <meta property="og:image" content="icon-512.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
 
-  <!-- (Opcional) PWA Manifest: crea manifest.json aparte cuando quieras -->
   <link rel="manifest" href="manifest.json">
 
-  <!-- =========================================================
-       ESTILOS — Todo lo visual concentrado aquí
-       Objetivo: tocar CSS sin tocar HTML/JS
-       ========================================================= -->
   <style>
     :root{
       --bg:#0b1220;
@@ -392,9 +376,7 @@
       </div>
     </header>
 
-    <!-- =========================================================
-         SCREEN: BUSCAR (pantalla por defecto)
-         ========================================================= -->
+    <!-- SCREEN: BUSCAR (default) -->
     <section id="screenSearch" class="screen is-active" aria-label="Buscar">
       <div class="h1">Buscar</div>
 
@@ -418,9 +400,7 @@
       </p>
     </section>
 
-    <!-- =========================================================
-         SCREEN: LISTA
-         ========================================================= -->
+    <!-- SCREEN: LISTA -->
     <section id="screenList" class="screen" aria-label="Lista">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
         <div class="h1" style="margin:0">Lista</div>
@@ -440,9 +420,7 @@
     </section>
   </main>
 
-  <!-- =========================================================
-       BOTTOM BAR — Navegación fija (Buscar / Lista)
-       ========================================================= -->
+  <!-- NAV inferior -->
   <nav class="bottombar" aria-label="Navegación">
     <div class="bottombar-inner">
       <button class="btn ghost" type="button" data-nav="search">🔍 Buscar</button>
@@ -450,9 +428,7 @@
     </div>
   </nav>
 
-  <!-- =========================================================
-       SHEET DETALLE
-       ========================================================= -->
+  <!-- SHEET detalle -->
   <div id="detailBackdrop" class="sheet-backdrop" role="presentation">
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Detalle del producto">
       <div class="sheet-head">
@@ -493,9 +469,7 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       DIALOG: Confirmación borrar lista
-       ========================================================= -->
+  <!-- Dialog borrar -->
   <dialog id="dlgDeleteList">
     <div class="dlg">
       <h3>Eliminar lista</h3>
@@ -507,9 +481,7 @@
     </div>
   </dialog>
 
-  <!-- =========================================================
-       DIALOG: Confirmación importar lista (reemplaza la actual)
-       ========================================================= -->
+  <!-- Dialog importar -->
   <dialog id="dlgImportList">
     <div class="dlg">
       <h3>Importar lista</h3>
@@ -597,6 +569,7 @@
 
     /* =========================================================
        3.1) COMPARTIR / IMPORTAR POR ENLACE (sin backend)
+       - FIX REAL: payload compacto para que WhatsApp NO "corte" el link
        ========================================================= */
     function b64urlEncode(str){
       const b64 = btoa(unescape(encodeURIComponent(str)));
@@ -609,32 +582,38 @@
       return decodeURIComponent(escape(bin));
     }
 
+    // Payload compacto: a = [[name, imgOrEmpty, qty], ...]
     function buildSharePayload(){
-      return { v: 1, items: state.items };
+      const sorted = [...state.items].sort((x,y)=>((x.order ?? 0) - (y.order ?? 0)));
+      return {
+        v: 1,
+        a: sorted.map(it => [ it?.name || "", it?.img || "", it?.qty || 1 ])
+      };
     }
 
     function buildShareUrl(){
-  const payload = JSON.stringify(buildSharePayload());
-  const token = b64urlEncode(payload);
-  const base = location.origin + location.pathname;
-  return base + "?i=" + token;
-}
+      const payload = JSON.stringify(buildSharePayload());
+      const token = b64urlEncode(payload);
+      const base = location.origin + location.pathname;
+      return base + "?i=" + token;
+    }
 
-   function readImportToken(){
-  const qs = new URLSearchParams(location.search || "");
-  const qi = qs.get("i");
-  if (qi) return qi;
+    function readImportToken(){
+      const qs = new URLSearchParams(location.search || "");
+      const qi = qs.get("i");
+      if (qi) return qi;
 
-  const h = location.hash || "";
-  const m = h.match(/[#&]i=([^&]+)/);
-  return m ? m[1] : null;
-}
+      const h = location.hash || "";
+      const m = h.match(/[#&]i=([^&]+)/);
+      return m ? m[1] : null;
+    }
+
     function clearImportToken(){
-  const url = new URL(location.href);
-  url.searchParams.delete("i");
-  url.hash = ""; // por compatibilidad si venía en hash
-  history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
-}
+      const url = new URL(location.href);
+      url.searchParams.delete("i");
+      url.hash = "";
+      history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+    }
 
     let pendingImportToken = null;
 
@@ -644,7 +623,7 @@
 
       pendingImportToken = t;
 
-      render();
+      render(); // pinta base (estado actual)
       const dlg = document.getElementById("dlgImportList");
       if (dlg && typeof dlg.showModal === "function"){
         dlg.showModal();
@@ -705,7 +684,9 @@
       const wrap = $("#shoppingList");
       wrap.innerHTML = "";
 
-      const items = [...state.items].sort((a,b)=>a.order-b.order);
+      // sort seguro aunque falte order (legacy)
+      const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
+
       $("#emptyListHint").style.display = items.length ? "none" : "block";
 
       for (const it of items){
@@ -790,10 +771,11 @@
     }
 
     /* =========================================================
-       7) MUTACIONES SOBRE LA LISTA
+       7) MUTACIONES LISTA
        ========================================================= */
     function addItem({ name, img=null, qty=1 }){
-      const order = state.items.length ? Math.max(...state.items.map(x=>x.order)) + 1 : 1;
+      const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
+      const order = maxOrder + 1;
       state.items.push({ id: uid(), name: norm(name), img, qty: Math.max(1, qty|0), order });
       saveStateToStorage();
       render();
@@ -820,7 +802,7 @@
     }
 
     /* =========================================================
-       8) EVENTOS DOM
+       8) EVENTOS
        ========================================================= */
     document.addEventListener("click", (ev)=>{
       const b = ev.target.closest("[data-nav]");
@@ -878,12 +860,13 @@
       closeDetail();
     });
 
+    // Compartir (con payload compacto)
     $("#btnShareList").addEventListener("click", async ()=>{
       const url = buildShareUrl();
 
       try{
         if (navigator.share){
-          await navigator.share({ title: "Lista de la compra", text: "Abre esta lista en la app:", url });
+          await navigator.share({ title: "Lista de la compra", url });
           return;
         }
       }catch(e){}
@@ -896,6 +879,7 @@
       }
     });
 
+    // Borrar lista
     $("#btnDeleteList").addEventListener("click", ()=>{
       $("#dlgDeleteList").showModal();
     });
@@ -907,6 +891,7 @@
       clearList();
     });
 
+    // Importar
     $("#dlgImportCancel").addEventListener("click", ()=>{
       $("#dlgImportList").close();
       pendingImportToken = null;
@@ -917,7 +902,7 @@
     $("#dlgImportConfirm").addEventListener("click", ()=>{
       $("#dlgImportList").close();
 
-      const token = pendingImportToken || readImportTokenFromHash();
+      const token = pendingImportToken || readImportToken();
       pendingImportToken = null;
 
       if (!token){
@@ -930,8 +915,21 @@
         const jsonStr = b64urlDecode(token);
         const payload = JSON.parse(jsonStr);
 
-        if (payload && payload.v === 1 && Array.isArray(payload.items)){
-          state.items = payload.items;
+        // Importa formato compacto v1: {v:1, a:[[name,img,qty],...]}
+        if (payload && payload.v === 1 && Array.isArray(payload.a)){
+          state.items = payload.a.map((row, idx)=>{
+            const name = row?.[0] ?? "";
+            const img  = row?.[1] ?? "";
+            const qty  = row?.[2] ?? 1;
+            return {
+              id: uid(),
+              name: norm(name),
+              img: img ? img : null,
+              qty: Math.max(1, qty|0),
+              order: idx + 1
+            };
+          });
+
           saveStateToStorage();
         }else{
           throw new Error("bad payload");
@@ -947,14 +945,15 @@
     window.addEventListener("online", render);
     window.addEventListener("offline", render);
 
-    // Si el link se abre con la app ya viva, esto lo hace fiable:
+    // Si llega un link con i= mientras la app ya está viva
     window.addEventListener("hashchange", maybePromptImport);
     window.addEventListener("pageshow", maybePromptImport);
+    window.addEventListener("popstate", maybePromptImport);
 
     /* =========================================================
        9) ARRANQUE
-       - Normal: Buscar
-       - Con enlace #i=...: pide importación y tras Continuar -> Lista
+       - Default: SEARCH
+       - Con token: diálogo → Continuar → LIST
        ========================================================= */
     function boot(){
       loadStateFromStorage();
@@ -964,12 +963,13 @@
     }
     boot();
   </script>
+
   <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js");
-    });
-  }
-</script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js");
+      });
+    }
+  </script>
 </body>
 </html>
