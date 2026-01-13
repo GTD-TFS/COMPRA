@@ -44,6 +44,7 @@ body{
   min-height:100%;
   margin:0;
   background: transparent;
+  color: var(--txt, #fff);
 }
 
     .app{
@@ -403,6 +404,7 @@ select {
   text-align: center;
 }
 .pitem .img .emoji{ font-size:44px; line-height:1; }
+
   </style>
 </head>
 
@@ -885,6 +887,7 @@ function render(){
 }
 
 let _lastSearchKey = "";
+let _lastListKey = "";
 function renderSearch(){
   if (state.activeScreen !== "search") return;
 
@@ -940,10 +943,15 @@ function renderSearch(){
 function renderList(){
   if (state.activeScreen !== "list") return;
 
+  const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
+
+  // ✅ NO reconstruir el DOM si la lista no ha cambiado (evita recarga de imágenes)
+  const listKey = items.map(it => `${it.id}:${it.qty}:${it.img || ""}:${it.emoji || ""}`).join("|");
+  if (listKey === _lastListKey) return;
+  _lastListKey = listKey;
+
   const wrap = $("#shoppingList");
   wrap.innerHTML = "";
-
-  const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
 
   const btnDelete = $("#btnDeleteList");
   if (btnDelete) btnDelete.style.display = state.items.length ? "inline-flex" : "none";
