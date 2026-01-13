@@ -481,130 +481,125 @@
     </div>
   </dialog>
 
-  <script type="module">
-    // =========================================================
-    // FIREBASE / FIRESTORE (LINK CORTO: ?list=ID)
-    // Pega TU firebaseConfig en el objeto.
-    // =========================================================
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import {
-      getFirestore, doc, getDoc, setDoc, onSnapshot,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<script type="module">
+/* =========================================================
+   FIREBASE / FIRESTORE — SIN BUILD, SIN NPM (CORRECTO)
+   ========================================================= */
 
-    const firebaseConfig = {
-      // TODO: PEGA AQUÍ TU CONFIG DE FIREBASE
-      apiKey: "REEMPLAZA",
-      authDomain: "REEMPLAZA",
-      projectId: "REEMPLAZA",
-      storageBucket: "REEMPLAZA",
-      messagingSenderId: "REEMPLAZA",
-      appId: "REEMPLAZA"
-    };
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-    const fbApp = initializeApp(firebaseConfig);
-    const db = getFirestore(fbApp);
+/* ===== CONFIG ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyC5DOjHH9hWMWotY7OWzdEV7PGBNkkohR8",
+  authDomain: "compra-250f9.firebaseapp.com",
+  projectId: "compra-250f9",
+  storageBucket: "compra-250f9.firebasestorage.app",
+  messagingSenderId: "329069667450",
+  appId: "1:329069667450:web:d063aed6336a9382f447c3"
+};
 
-    const LS_LIST_ID = "pwa_list_id_v1";
-    let LIST_ID = null;
-    let stopCloud = null;
-    let cloudSaveTimer = null;
+/* ===== INIT ===== */
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
-    function readListIdFromUrl(){
-      const u = new URL(location.href);
-      return u.searchParams.get("list");
+/* =========================================================
+   IDENTIDAD DE LISTA (URL + LOCAL)
+   ========================================================= */
+const LS_LIST_ID = "pwa_list_id_v1";
+let LIST_ID = null;
+let stopCloud = null;
+let cloudSaveTimer = null;
+
+function newId(){
+  return crypto.randomUUID();
+}
+
+function readListIdFromUrl(){
+  return new URL(location.href).searchParams.get("list");
+}
+
+function setListIdInUrl(id){
+  const u = new URL(location.href);
+  u.searchParams.set("list", id);
+  history.replaceState(null, "", u.toString());
+}
+
+function ensureListId(){
+  const fromUrl = readListIdFromUrl();
+  if (fromUrl){
+    localStorage.setItem(LS_LIST_ID, fromUrl);
+    return fromUrl;
+  }
+  const fromLocal = localStorage.getItem(LS_LIST_ID);
+  if (fromLocal) return fromLocal;
+
+  const id = newId();
+  localStorage.setItem(LS_LIST_ID, id);
+  setListIdInUrl(id);
+  return id;
+}
+
+/* =========================================================
+   FIRESTORE SYNC
+   ========================================================= */
+async function cloudInit(state){
+  LIST_ID = ensureListId();
+  const ref = doc(db, "lists", LIST_ID);
+
+  // Carga inicial
+  const snap = await getDoc(ref);
+  if (snap.exists()){
+    const data = snap.data();
+    if (Array.isArray(data.items)){
+      state.items = data.items;
     }
-    function setListIdInUrl(listId){
-      const u = new URL(location.href);
-      u.searchParams.set("list", listId);
-      history.replaceState(null, "", u.pathname + "?" + u.searchParams.toString());
+  }else{
+    await setDoc(ref, {
+      items: state.items,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  // Realtime
+  stopCloud = onSnapshot(ref, (s)=>{
+    if (!s.exists()) return;
+    const d = s.data();
+    if (Array.isArray(d.items)){
+      state.items = d.items;
+      render();
     }
-    function clearListIdFromUrl(){
-      const u = new URL(location.href);
-      u.searchParams.delete("list");
-      history.replaceState(null, "", u.pathname + (u.searchParams.toString() ? ("?" + u.searchParams.toString()) : ""));
-    }
-    function newId(){
-      return (crypto?.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2)));
-    }
+  });
+}
 
-    function ensureListId(){
-      const fromUrl = readListIdFromUrl();
-      if (fromUrl){
-        localStorage.setItem(LS_LIST_ID, fromUrl);
-        return fromUrl;
-      }
-      const fromLocal = localStorage.getItem(LS_LIST_ID);
-      if (fromLocal) return fromLocal;
-      const id = newId();
-      localStorage.setItem(LS_LIST_ID, id);
-      setListIdInUrl(id);
-      return id;
-    }
+function cloudSave(state){
+  if (!LIST_ID) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(()=>{
+    const ref = doc(db, "lists", LIST_ID);
+    setDoc(ref, {
+      items: state.items,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }, 200);
+}
 
-    async function cloudInit(){
-      LIST_ID = ensureListId();
-
-      if (typeof stopCloud === "function") stopCloud();
-      const ref = doc(db, "lists", LIST_ID);
-
-      // Si vienes con ?list=, quieres caer a LISTA
-      const cameFromLink = !!readListIdFromUrl();
-
-      try{
-        const snap = await getDoc(ref);
-        if (snap.exists()){
-          const data = snap.data() || {};
-          if (Array.isArray(data.items)){
-            state.items = data.items;
-            saveStateToStorage();
-            state.activeScreen = cameFromLink ? "list" : state.activeScreen;
-            render();
-          }
-        }else{
-          // Crea doc inicial con lo que haya local (o vacío)
-          await setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge: true });
-        }
-      }catch(e){
-        // Si Firestore falla (offline o config mal), seguimos con local
-        console.warn("cloudInit failed:", e);
-      }
-
-      // Realtime
-      try{
-        stopCloud = onSnapshot(ref, (s)=>{
-          if (!s.exists()) return;
-          const d = s.data() || {};
-          if (Array.isArray(d.items)){
-            state.items = d.items;
-            saveStateToStorage();
-            render();
-          }
-        });
-      }catch(e){
-        console.warn("onSnapshot failed:", e);
-      }
-    }
-
-    function cloudSave(){
-      if (!LIST_ID) return;
-      clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = setTimeout(async ()=>{
-        try{
-          const ref = doc(db, "lists", LIST_ID);
-          await setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge: true });
-        }catch(e){
-          console.warn("cloudSave failed:", e);
-        }
-      }, 150);
-    }
-
-    function buildShareUrlShort(){
-      const u = new URL(location.origin + location.pathname);
-      u.searchParams.set("list", LIST_ID || ensureListId());
-      return u.toString();
-    }
-
+/* =========================================================
+   COMPARTIR
+   ========================================================= */
+function buildShareUrl(){
+  const u = new URL(location.origin + location.pathname);
+  u.searchParams.set("list", LIST_ID || ensureListId());
+  return u.toString();
+}
+</script>
     // =========================================================
     // APP ORIGINAL
     // =========================================================
