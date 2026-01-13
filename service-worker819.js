@@ -10,9 +10,40 @@ const CORE_ASSETS = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  // Si tienes carpeta de fotos y quieres offline:
-  // "./images/leche.jpg",
-  // "./images/panintegral.jpg",
+
+  // Imágenes del catálogo (precache)
+  "./images/leche.jpg",
+  "./images/panintegral.jpg",
+  "./images/huevos.jpg",
+  "./images/agua.jpg",
+  "./images/tiras.jpg",
+  "./images/yogurgrande.jpg",
+  "./images/mango.jpg",
+  "./images/salchichas.jpg",
+  "./images/semicurado.jpg",
+  "./images/yogurvainilla.jpg",
+  "./images/nivea.jpg",
+  "./images/lasana.jpg",
+  "./images/yogurlidl.jpg",
+  "./images/detergente.jpg",
+  "./images/suavizante.jpg",
+  "./images/platano.jpg",
+  "./images/gomina.jpg",
+  "./images/cafe1.jpg",
+  "./images/papelcocina.jpg",
+  "./images/toallitas.jpg",
+  "./images/higienico.jpg",
+  "./images/empanado.jpg",
+  "./images/yogursoja.jpg",
+  "./images/gazpacho.jpg",
+  "./images/quesolight.jpg",
+  "./images/cottage.jpg",
+  "./images/aguacate.jpg",
+  "./images/pepino.jpg",
+  "./images/tomate.jpg",
+  "./images/tomatefrito.jpg",
+  "./images/lechuga.jpg",
+  "./images/pastalenteja.jpg"
 ];
 
 self.addEventListener("install", (event) => {
