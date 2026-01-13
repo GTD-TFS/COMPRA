@@ -3,7 +3,7 @@
    - Assets: cache-first (rápido y offline)
 */
 
-const CACHE_VERSION = "compra-v4";
+const CACHE_VERSION = "compra-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -88,12 +88,21 @@ self.addEventListener("fetch", (event) => {
 
 async function cacheFirst(req) {
   const cache = await caches.open(CACHE_VERSION);
-  const hit = await cache.match(req);
+
+  // Normaliza la key para evitar mismatches:
+  // - quita querystring
+  // - normaliza rutas de GitHub Pages
+  const url = new URL(req.url);
+  url.search = "";
+
+  // key "canónica"
+  const key = new Request(url.toString(), { method: "GET" });
+
+  const hit = await cache.match(key);
   if (hit) return hit;
 
   const res = await fetch(req);
-  // Cachea solo respuestas válidas
-  if (res && res.ok) cache.put(req, res.clone());
+  if (res && res.ok) cache.put(key, res.clone());
   return res;
 }
 
