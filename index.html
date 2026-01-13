@@ -378,6 +378,29 @@ select {
     0 0 0 3px rgba(40, 200, 120, .25),
     0 8px 22px rgba(40, 200, 120, .45);
 }
+#shoppingList{
+  margin-top: 12px;
+}
+#storeFilter{
+  margin-bottom: 8px;
+}
+.bottombar .btn.is-active{
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.22),
+      rgba(255,255,255,.08)
+    );
+  border-color: rgba(255,255,255,.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.65),
+    inset 0 -1px 0 rgba(255,255,255,.18),
+    0 8px 22px rgba(0,0,0,.45);
+  backdrop-filter: blur(10px) saturate(160%);
+}
+.pitem .label{
+  text-align: center;
+}
   </style>
 </head>
 
@@ -389,7 +412,17 @@ select {
 
     <!-- SCREEN: BUSCAR (default si NO vienes con ?list=) -->
     <section id="screenSearch" class="screen is-active" aria-label="Buscar">
-      <div class="h1">Buscar</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+  <div class="h1" style="margin:0">Buscar</div>
+
+  <select id="storeFilter" class="input" style="max-width:190px; padding:10px 12px;" aria-label="Supermercado">
+    <option value="ALL">Todos</option>
+    <option value="MERCADONA">Mercadona</option>
+    <option value="HIPERDINO">Hiperdino</option>
+    <option value="LIDL">Lidl</option>
+    
+  </select>
+</div>
 
       <div class="searchbar">
         <input id="searchInput" class="input" type="search" inputmode="search"
@@ -568,20 +601,43 @@ function buildShareUrl(){
 /* ===== FIX MINIMO ===== */
 function buildShareUrlShort(){ return buildShareUrl(); }
     
-    const CONFIG = {
-      imageBasePath: "./images/",
-      catalog: [
-        { name: "LECHE", img: "leche.jpg" },
-        { name: "PAN", img: "panintegral.jpg" },
-        { name: "HUEVOS", img: "huevos.jpg" },
-        { name: "AGUA", img: "agua.jpg" },
-        { name: "TIRAS", img: "tiras.jpg" },
-        { name: "ACEITE", img: "aceite.jpg" },
-        { name: "AZÚCAR", img: "azucar.jpg" },
-        { name: "SAL", img: "sal.jpg" },
-        { name: "YOGUR", img: "yogurgrande.jpg" },
-      ]
-    };
+ const CONFIG = {
+  imageBasePath: "./images/",
+  catalog: [
+    { name: "LECHE", img: "leche.jpg", store: "MERCADONA" },
+    { name: "PAN", img: "panintegral.jpg", store: "TODOS" },
+    { name: "HUEVOS", img: "huevos.jpg", store: "MERCADONA" },
+    { name: "AGUA", img: "agua.jpg", store: "TODOS" },
+    { name: "TIRAS", img: "tiras.jpg", store: "LIDL" },
+    { name: "YOGUR", img: "yogurgrande.jpg", store: "MERCADONA" },
+    { name: "MANGO", img: "mango.jpg", store: "TODOS" },
+    { name: "SALCHICHAS", img: "salchichas.jpg", store: "HIPERDINO" },
+    { name: "QUESO SEMICURADO", img: "semicurado.jpg", store: "HIPERDINO" },
+    { name: "YOGUR VAINILLA", img: "yogurvainilla.jpg", store: "HIPERDINO" },
+    { name: "NIVEA", img: "nivea.jpg", store: "HIPERDINO" },
+    { name: "LASAÑA", img: "lasaña.jpg", store: "LIDL" },
+    { name: "YOGUR LIDL", img: "yogurlidl.jpg", store: "LIDL" },
+    { name: "DETERGENTE", img: "detergente.jpg", store: "TODOS" },
+    { name: "SUAVIZANTE", img: "suavizante.jpg", store: "TODOS" },
+    { name: "PLÁTANO", img: "platano.jpg", store: "TODOS" },
+    { name: "GOMINA", img: "gomina.jpg", store: "TODOS" },
+    { name: "CAFÉ", img: "cafe1.jpg", store: "HIPERDINO" },
+    { name: "PAPEL COCINA", img: "papelcocina.jpg", store: "TODOS" },
+    { name: "TOALLITAS", img: "toallitas.jpg", store: "MERCADONA" },
+    { name: "HIGIÉNICO", img: "higienico.jpg", store: "TODOS" },
+    { name: "EMPANADO", img: "empanado.jpg", store: "MERCADONA" },
+    { name: "YOGUR SOJA", img: "yogursoja.jpg", store: "MERCADONA" },
+    { name: "GAZPACHO", img: "gazpacho.jpg", store: "MERCADONA" },
+    { name: "QUESO LIGHT", img: "quesolight.jpg", store: "MERCADONA" },
+    { name: "COTTAGE", img: "cottage.jpg", store: "MERCADONA" },
+    { name: "AGUACATE", img: "aguacate.jpg", store: "TODOS" },
+    { name: "PEPINO", img: "pepino.jpg", store: "TODOS" },
+    { name: "TOMATE", img: "tomate.jpg", store: "TODOS" },
+    { name: "TOMATE FRITO", img: "tomatefrito.jpg", store: "MERCADONA" },
+    { name: "LECHUGA", img: "lechuga.jpg", store: "TODOS" },
+    { name: "PASTA LENTEJA", img: "pastalenteja.jpg", store: "MERCADONA" }
+  ]
+};
 
     const state = {
       activeScreen: "search", // "search" | "list"
@@ -636,6 +692,12 @@ if (s) s.textContent = navigator.onLine ? "online" : "offline";
       renderSearch();
       renderList();
       renderDetail();
+        document.querySelectorAll('.bottombar .btn').forEach(b=>{
+    b.classList.toggle(
+      'is-active',
+      b.dataset.nav === state.activeScreen
+    );
+  });
     }
 
     function renderSearch(){
@@ -643,7 +705,12 @@ if (s) s.textContent = navigator.onLine ? "online" : "offline";
 
       $("#searchInput").value = state.searchText;
 
-      const results = CONFIG.catalog.filter(p => contains(p.name, state.searchText));
+const storeSel = $("#storeFilter")?.value || "ALL";
+const results = CONFIG.catalog.filter(p => {
+  if (!contains(p.name, state.searchText)) return false;
+  if (storeSel === "ALL") return true;
+  return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
+});
 
       const grid = $("#productGrid");
       grid.innerHTML = "";
@@ -703,9 +770,10 @@ if (btnDelete) {
         });
 
         li.querySelector('button[data-act="delete"]').addEventListener("click", (ev)=>{
-          ev.stopPropagation();
-          deleteItem(it.id);
-        });
+  ev.stopPropagation();
+  if (!confirm(`¿Eliminar "${it.name}" de la lista?`)) return;
+  deleteItem(it.id);
+});
 
         wrap.appendChild(li);
       }
@@ -799,7 +867,9 @@ if (btnDelete) {
       renderSearch();
     });
 
-   
+    $("#storeFilter").addEventListener("change", ()=>{
+  renderSearch();
+});   
 
    $("#btnAddFree").addEventListener("click", ()=>{
   const name = norm(state.searchText);
