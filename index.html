@@ -1034,8 +1034,11 @@ function openDetailFromList(it){
 function closeDetail(){
   const origin = state.detail.origin;
   state.detail.isOpen = false;
-  render();
-  navTo(origin);
+
+  // Cierra el sheet sin re-render completo (evita reinsertar imágenes de la lista)
+  $("#detailBackdrop").classList.remove("is-open");
+
+  navTo(origin); // esto ya hace render() una vez, suficiente
 }
 
 function addItem({ name, img=null, emoji="", qty=1 }){
