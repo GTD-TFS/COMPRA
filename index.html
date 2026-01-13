@@ -755,7 +755,7 @@ if (btnDelete) {
           ${thumb}
           <div class="meta">
             <p class="name" title="${it.name}">${it.name}</p>
-            <p class="sub">${it.img ? "Con foto" : "Sin foto"}</p>
+<p class="sub">${it.store || "TODOS"}</p>
           </div>
           <div class="qty">
             <div class="pill" aria-label="Cantidad">${it.qty}</div>
@@ -806,7 +806,16 @@ if (btnDelete) {
     }
 
     function openDetailFromSearch(p){
-      state.detail = { isOpen:true, origin:"search", mode:"add", itemId:null, name:p.name, img:p.img||null, qty:1 };
+state.detail = {
+  isOpen:true,
+  origin:"search",
+  mode:"add",
+  itemId:null,
+  name:p.name,
+  img:p.img||null,
+  store: p.store || "TODOS",
+  qty:1
+};
       renderDetail();
     }
 
@@ -825,7 +834,14 @@ if (btnDelete) {
     function addItem({ name, img=null, qty=1 }){
       const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
       const order = maxOrder + 1;
-      state.items.push({ id: uid(), name: norm(name), img, qty: Math.max(1, qty|0), order });
+state.items.push({
+  id: uid(),
+  name: norm(name),
+  img,
+  store: state.detail.store || "TODOS",
+  qty: Math.max(1, qty|0),
+  order
+});
       saveStateToStorage();
       cloudSave();
       render();
