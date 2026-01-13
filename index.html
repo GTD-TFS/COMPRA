@@ -370,6 +370,14 @@ textarea,
 select {
   font-size: 16px;
 }
+.btn.primary:active,
+.btn.primary:hover{
+  background: rgba(40, 200, 120, .35);
+  border-color: rgba(40, 200, 120, .75);
+  box-shadow:
+    0 0 0 3px rgba(40, 200, 120, .25),
+    0 8px 22px rgba(40, 200, 120, .45);
+}
   </style>
 </head>
 
@@ -459,9 +467,6 @@ select {
             <button id="btnDeleteItem" class="btn danger" type="button" style="display:none">Borrar</button>
           </div>
 
-          <p class="hint" style="margin:0">
-            Al cerrar vuelves a donde estabas (Buscar o Lista).
-          </p>
         </div>
       </div>
     </div>
@@ -796,11 +801,16 @@ if (btnDelete) {
 
    
 
-    $("#btnAddFree").addEventListener("click", ()=>{
-      const name = norm(state.searchText);
-      if (!name) return;
-      addItem({ name, img: null, qty: 1 });
-    });
+   $("#btnAddFree").addEventListener("click", ()=>{
+  const name = norm(state.searchText);
+  if (!name) return;
+  addItem({ name, img: null, qty: 1 });
+
+  // UX: al añadir “libre”, vuelve a Buscar (feedback inmediato)
+  state.searchText = "";
+  navTo("search");      // o "search" si ya estás ahí, fuerza render y se nota la acción
+  $("#searchInput")?.focus();
+});
 
     $("#btnCloseDetail").addEventListener("click", closeDetail);
     $("#detailBackdrop").addEventListener("click", (ev)=>{
