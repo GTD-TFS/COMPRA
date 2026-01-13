@@ -372,7 +372,7 @@
     <header class="topbar">
       <div class="brand">
         <span>Lista</span>
-        <small id="appStatus">offline/online</small>
+       
       </div>
     </header>
 
@@ -382,7 +382,7 @@
 
       <div class="searchbar">
         <input id="searchInput" class="input" type="search" inputmode="search"
-               placeholder="Escribe lo que buscas (ej. arroz, lejía, pilas…)" autocomplete="off" />
+               autocomplete="off" />
         <button id="btnClearSearch" class="btn ghost" type="button" title="Limpiar">Limpiar</button>
       </div>
 
@@ -394,10 +394,6 @@
         </div>
         <button id="btnAddFree" class="btn primary" type="button">Añadir</button>
       </div>
-
-      <p class="hint" style="margin-top:12px">
-        Consejo: escribe parte del nombre (búsqueda por <strong>contiene</strong>).
-      </p>
     </section>
 
     <!-- SCREEN: LISTA -->
@@ -405,18 +401,14 @@
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
         <div class="h1" style="margin:0">Lista</div>
         <div style="display:flex; gap:10px; align-items:center;">
-          <button id="btnShareList" class="btn ghost" type="button">Compartir</button>
+
           <button id="btnDeleteList" class="btn danger" type="button">Eliminar lista</button>
         </div>
       </div>
 
-      <p class="hint">El primer producto añadido aparece el primero.</p>
-
       <div id="shoppingList" class="list" aria-label="Productos en la lista"></div>
 
-      <p id="emptyListHint" class="hint" style="display:none">
-        La lista está vacía. Ve a Buscar para añadir productos.
-      </p>
+     
     </section>
   </main>
 
@@ -460,10 +452,6 @@
             <button id="btnConfirmDetail" class="btn primary" type="button">Añadir</button>
             <button id="btnDeleteItem" class="btn danger" type="button" style="display:none">Borrar</button>
           </div>
-
-          <p class="hint" style="margin:0">
-            Al cerrar vuelves a donde estabas (Buscar o Lista).
-          </p>
         </div>
       </div>
     </div>
@@ -667,7 +655,7 @@ function buildShareUrlShort(){ return buildShareUrl(); }
       wrap.innerHTML = "";
 
       const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
-      $("#emptyListHint").style.display = items.length ? "none" : "block";
+     
 
       for (const it of items){
         const li = document.createElement("div");
@@ -832,25 +820,6 @@ function buildShareUrlShort(){ return buildShareUrl(); }
       if (state.detail.mode !== "edit") return;
       deleteItem(state.detail.itemId);
       closeDetail();
-    });
-
-    // Compartir: link corto ?list=ID (abre la misma lista en otro móvil)
-    $("#btnShareList").addEventListener("click", async ()=>{
-      const url = buildShareUrlShort();
-
-      try{
-        if (navigator.share){
-          await navigator.share({ title: "Lista de la compra", url });
-          return;
-        }
-      }catch(e){}
-
-      try{
-        await navigator.clipboard.writeText(url);
-        alert("Enlace copiado. Pégalo en WhatsApp.");
-      }catch(e){
-        prompt("Copia este enlace y pégalo en WhatsApp:", url);
-      }
     });
 
     $("#btnDeleteList").addEventListener("click", ()=>{
