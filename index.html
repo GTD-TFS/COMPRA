@@ -834,7 +834,7 @@ if (s) s.textContent = navigator.onLine ? "online" : "offline";
     );
   });
     }
-
+let _lastSearchKey = "";
     function renderSearch(){
       if (state.activeScreen !== "search") return;
 
@@ -843,6 +843,9 @@ if (s) s.textContent = navigator.onLine ? "online" : "offline";
 const storeSel = $("#storeFilter")?.value || "ALL";
 
 const q = norm(state.searchText);
+const searchKey = storeSel + "|" + q;
+if (searchKey === _lastSearchKey) return;  // no tocar DOM si no cambió nada
+_lastSearchKey = searchKey;
 const source = q ? [...CONFIG.catalog, ...GENERICOS] : CONFIG.catalog; // genéricos SOLO si hay texto
 
 const results = source.filter(p => {
