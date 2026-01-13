@@ -10,6 +10,9 @@ const CORE_ASSETS = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
+  // Si tienes carpeta de fotos y quieres offline:
+  // "./images/leche.jpg",
+  // "./images/panintegral.jpg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -38,7 +41,7 @@ self.addEventListener("fetch", (event) => {
   // Solo tu mismo origen
   if (url.origin !== self.location.origin) return;
 
-  // HTML: network-first
+  // Navegaciones / HTML: network-first (para que el index se actualice)
   const isHTML =
     req.mode === "navigate" ||
     (req.headers.get("accept") || "").includes("text/html");
@@ -58,11 +61,8 @@ async function cacheFirst(req) {
   if (hit) return hit;
 
   const res = await fetch(req);
-
-  // Cachea también opaque (cuando aplica)
-  if (res && (res.ok || res.type === "opaque")) {
-    cache.put(req, res.clone());
-  }
+  // Cachea solo respuestas válidas
+  if (res && res.ok) cache.put(req, res.clone());
   return res;
 }
 
@@ -70,12 +70,15 @@ async function networkFirst(req) {
   const cache = await caches.open(CACHE_VERSION);
   try {
     const res = await fetch(req);
-    if (res && (res.ok || res.type === "opaque")) {
-      cache.put(req, res.clone());
-    }
+    if (res && res.ok) cache.put(req, res.clone());
     return res;
   } catch (e) {
-    const hit = await cache.match(req);
-    return hit || cache.match("./index.html");
+    // CLAVE: en navegación, ignora querystring (?list=...) al buscar en caché
+    const hit =
+      (await cache.match(req, { ignoreSearch: true })) ||
+      (await cache.match("./index.html", { ignoreSearch: true })) ||
+      (await cache.match("./", { ignoreSearch: true }));
+
+    return hit;
   }
 }
