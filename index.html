@@ -401,6 +401,7 @@ select {
 .pitem .label{
   text-align: center;
 }
+.pitem .img .emoji{ font-size:44px; line-height:1; }
   </style>
 </head>
 
@@ -639,6 +640,140 @@ function buildShareUrlShort(){ return buildShareUrl(); }
   ]
 };
 
+// Genéricos SOLO TEXTO (sin foto). Se verán en búsqueda y en la lista.
+const GENERICOS = [
+  { name: "SAL", emoji: "🧂", store: "TODOS" },
+  { name: "AZÚCAR", emoji: "🍬", store: "TODOS" },
+  { name: "HARINA", emoji: "🌾", store: "TODOS" },
+  { name: "LEVADURA", emoji: "🧪", store: "TODOS" },
+  { name: "ARROZ", emoji: "🍚", store: "TODOS" },
+  { name: "PASTA", emoji: "🍝", store: "TODOS" },
+  { name: "FIDEOS", emoji: "🍜", store: "TODOS" },
+  { name: "COUS COUS", emoji: "🍚", store: "TODOS" },
+  { name: "QUINOA", emoji: "🌾", store: "TODOS" },
+  { name: "LENTEJAS", emoji: "🫘", store: "TODOS" },
+  { name: "GARBANZOS", emoji: "🫘", store: "TODOS" },
+  { name: "ALUBIAS", emoji: "🫘", store: "TODOS" },
+  { name: "JUDÍAS VERDES", emoji: "🥬", store: "TODOS" },
+  { name: "MAÍZ", emoji: "🌽", store: "TODOS" },
+  { name: "AVENA", emoji: "🌾", store: "TODOS" },
+
+  { name: "ACEITE DE OLIVA", emoji: "🫒", store: "TODOS" },
+  { name: "VINAGRE", emoji: "🍶", store: "TODOS" },
+  { name: "SALSA SOJA", emoji: "🥢", store: "TODOS" },
+  { name: "MAYONESA", emoji: "🥪", store: "TODOS" },
+  { name: "KETCHUP", emoji: "🍅", store: "TODOS" },
+  { name: "MOSTAZA", emoji: "🌭", store: "TODOS" },
+  { name: "SALSA BARBACOA", emoji: "🍖", store: "TODOS" },
+  { name: "CALDO (BRICK)", emoji: "🍲", store: "TODOS" },
+  { name: "CUBITOS CALDO", emoji: "🍲", store: "TODOS" },
+
+  { name: "ATÚN", emoji: "🐟", store: "TODOS" },
+  { name: "SARDINAS", emoji: "🐟", store: "TODOS" },
+  { name: "MEJILLONES", emoji: "🦪", store: "TODOS" },
+  { name: "ANCHOAS", emoji: "🐟", store: "TODOS" },
+  { name: "MAÍZ LATA", emoji: "🌽", store: "TODOS" },
+  { name: "TOMATE LATA", emoji: "🍅", store: "TODOS" },
+  { name: "ACEITUNAS", emoji: "🫒", store: "TODOS" },
+  { name: "PEPINILLOS", emoji: "🥒", store: "TODOS" },
+
+  { name: "POLLO", emoji: "🍗", store: "TODOS" },
+  { name: "PAVO", emoji: "🦃", store: "TODOS" },
+  { name: "CARNE PICADA", emoji: "🥩", store: "TODOS" },
+  { name: "TERNERA", emoji: "🥩", store: "TODOS" },
+  { name: "CERDO", emoji: "🥩", store: "TODOS" },
+  { name: "JAMÓN", emoji: "🍖", store: "TODOS" },
+  { name: "JAMÓN COCIDO", emoji: "🍖", store: "TODOS" },
+  { name: "BACON", emoji: "🥓", store: "TODOS" },
+
+  { name: "PESCADO", emoji: "🐟", store: "TODOS" },
+  { name: "SALMÓN", emoji: "🐟", store: "TODOS" },
+  { name: "MERLUZA", emoji: "🐟", store: "TODOS" },
+  { name: "GAMBAS", emoji: "🦐", store: "TODOS" },
+
+  { name: "PATATAS", emoji: "🥔", store: "TODOS" },
+  { name: "CEBOLLA", emoji: "🧅", store: "TODOS" },
+  { name: "AJO", emoji: "🧄", store: "TODOS" },
+  { name: "ZANAHORIA", emoji: "🥕", store: "TODOS" },
+  { name: "PIMIENTO", emoji: "🫑", store: "TODOS" },
+  { name: "CALABACÍN", emoji: "🥒", store: "TODOS" },
+  { name: "BERENJENA", emoji: "🍆", store: "TODOS" },
+  { name: "CHAMPIÑONES", emoji: "🍄", store: "TODOS" },
+  { name: "ESPINACAS", emoji: "🥬", store: "TODOS" },
+  { name: "BRÓCOLI", emoji: "🥦", store: "TODOS" },
+  { name: "COLIFLOR", emoji: "🥦", store: "TODOS" },
+  { name: "CALABAZA", emoji: "🎃", store: "TODOS" },
+  { name: "LIMÓN", emoji: "🍋", store: "TODOS" },
+  { name: "NARANJAS", emoji: "🍊", store: "TODOS" },
+  { name: "MANZANAS", emoji: "🍎", store: "TODOS" },
+  { name: "PERAS", emoji: "🍐", store: "TODOS" },
+  { name: "UVA", emoji: "🍇", store: "TODOS" },
+  { name: "FRESAS", emoji: "🍓", store: "TODOS" },
+  { name: "KIWI", emoji: "🥝", store: "TODOS" },
+  { name: "PIÑA", emoji: "🍍", store: "TODOS" },
+  { name: "SANDÍA", emoji: "🍉", store: "TODOS" },
+  { name: "MELÓN", emoji: "🍈", store: "TODOS" },
+
+  { name: "MANTEQUILLA", emoji: "🧈", store: "TODOS" },
+  { name: "NATA", emoji: "🥛", store: "TODOS" },
+  { name: "QUESO RALLADO", emoji: "🧀", store: "TODOS" },
+  { name: "YOGUR NATURAL", emoji: "🥣", store: "TODOS" },
+  { name: "YOGUR GRIEGO", emoji: "🥣", store: "TODOS" },
+
+  { name: "PAN DE MOLDE", emoji: "🍞", store: "TODOS" },
+  { name: "BOLLERÍA", emoji: "🥐", store: "TODOS" },
+  { name: "GALLETAS", emoji: "🍪", store: "TODOS" },
+  { name: "CHOCOLATE", emoji: "🍫", store: "TODOS" },
+  { name: "CACAO", emoji: "🍫", store: "TODOS" },
+  { name: "MIEL", emoji: "🍯", store: "TODOS" },
+  { name: "MERMELADA", emoji: "🍓", store: "TODOS" },
+
+  { name: "CERVEZA", emoji: "🍺", store: "TODOS" },
+  { name: "VINO", emoji: "🍷", store: "TODOS" },
+  { name: "REFRESCOS", emoji: "🥤", store: "TODOS" },
+  { name: "ZUMO", emoji: "🧃", store: "TODOS" },
+  { name: "TÉ", emoji: "🍵", store: "TODOS" },
+
+  { name: "PIMIENTA", emoji: "🌶️", store: "TODOS" },
+  { name: "PIMENTÓN", emoji: "🌶️", store: "TODOS" },
+  { name: "ORÉGANO", emoji: "🌿", store: "TODOS" },
+  { name: "ALBAHACA", emoji: "🌿", store: "TODOS" },
+  { name: "COMINO", emoji: "🌿", store: "TODOS" },
+  { name: "CURRY", emoji: "🍛", store: "TODOS" },
+  { name: "CANELA", emoji: "🧁", store: "TODOS" },
+
+  { name: "BOLSAS BASURA", emoji: "🗑️", store: "TODOS" },
+  { name: "FILM TRANSPARENTE", emoji: "🧻", store: "TODOS" },
+  { name: "PAPEL ALUMINIO", emoji: "🧻", store: "TODOS" },
+  { name: "SERVILLETAS", emoji: "🧻", store: "TODOS" },
+  { name: "FREGASUELOS", emoji: "🧽", store: "TODOS" },
+  { name: "LAVAVAJILLAS", emoji: "🧽", store: "TODOS" },
+  { name: "LEJÍA", emoji: "🧴", store: "TODOS" },
+  { name: "AMONIACO", emoji: "🧴", store: "TODOS" },
+  { name: "LIMPIACRISTALES", emoji: "🪟", store: "TODOS" },
+  { name: "DESENGRASANTE", emoji: "🧴", store: "TODOS" },
+  { name: "GUANTES", emoji: "🧤", store: "TODOS" },
+  { name: "ESTROPAJO", emoji: "🧽", store: "TODOS" },
+  { name: "BAYETAS", emoji: "🧽", store: "TODOS" },
+
+  { name: "PASTA DIENTES", emoji: "🦷", store: "TODOS" },
+  { name: "CEPILLO DIENTES", emoji: "🦷", store: "TODOS" },
+  { name: "HILO DENTAL", emoji: "🦷", store: "TODOS" },
+  { name: "CHAMPÚ", emoji: "🧴", store: "TODOS" },
+  { name: "GEL DUCHA", emoji: "🚿", store: "TODOS" },
+  { name: "DESODORANTE", emoji: "🧴", store: "TODOS" },
+  { name: "ESPUMA AFEITAR", emoji: "🪒", store: "TODOS" },
+  { name: "CUCHILLAS AFEITAR", emoji: "🪒", store: "TODOS" },
+  { name: "ALGODÓN", emoji: "🧻", store: "TODOS" },
+  { name: "TAMPONES", emoji: "🩸", store: "TODOS" },
+  { name: "COMPRESAS", emoji: "🩸", store: "TODOS" },
+
+  { name: "PILAS", emoji: "🔋", store: "TODOS" },
+  { name: "BOMBILLA", emoji: "💡", store: "TODOS" },
+  { name: "CINTA ADHESIVA", emoji: "📦", store: "TODOS" }
+
+];
+
     const state = {
       activeScreen: "search", // "search" | "list"
       searchText: "",
@@ -706,7 +841,11 @@ if (s) s.textContent = navigator.onLine ? "online" : "offline";
       $("#searchInput").value = state.searchText;
 
 const storeSel = $("#storeFilter")?.value || "ALL";
-const results = CONFIG.catalog.filter(p => {
+
+const q = norm(state.searchText);
+const source = q ? [...CONFIG.catalog, ...GENERICOS] : CONFIG.catalog; // genéricos SOLO si hay texto
+
+const results = source.filter(p => {
   if (!contains(p.name, state.searchText)) return false;
   if (storeSel === "ALL") return true;
   return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
@@ -714,19 +853,33 @@ const results = CONFIG.catalog.filter(p => {
 
       const grid = $("#productGrid");
       grid.innerHTML = "";
+      console.log("RESULTS sample:", results.slice(0, 12).map(x => ({ name:x.name, img:x.img, store:x.store })));
       for (const p of results){
         const el = document.createElement("div");
         el.className = "pitem";
         el.setAttribute("role","listitem");
+        const hasImg = !!p.img;
         el.innerHTML = `
-          <div class="img">${p.img ? `<img alt="${p.name}" src="${imgUrl(p.img)}" loading="lazy">` : ""}</div>
+<div class="img">
+  ${
+    p.img
+      ? `<img alt="${p.name}" src="${imgUrl(p.img)}" loading="lazy">`
+      : `<span style="font-size:42px; line-height:1">${p.emoji || ""}</span>`
+  }
+</div>
           <div class="label" title="${p.name}">${p.name}</div>
         `;
         el.addEventListener("click", () => openDetailFromSearch(p));
         grid.appendChild(el);
       }
 
-      const showFree = norm(state.searchText).length > 0 && results.length === 0;
+      const allByText = [...CONFIG.catalog, ...GENERICOS].filter(p => {
+  if (!contains(p.name, state.searchText)) return false;
+  if (storeSel === "ALL") return true;
+  return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
+});
+
+const showFree = norm(state.searchText).length > 0 && allByText.length === 0;
       $("#addFreeBox").classList.toggle("is-visible", showFree);
       $("#freeText").textContent = norm(state.searchText);
     }
@@ -747,9 +900,9 @@ if (btnDelete) {
         const li = document.createElement("div");
         li.className = "li";
 
-        const thumb = it.img
-          ? `<div class="thumb"><img alt="${it.name}" src="${imgUrl(it.img)}" loading="lazy"></div>`
-          : `<div class="thumb" aria-hidden="true">—</div>`;
+       const thumb = it.img
+  ? `<div class="thumb"><img alt="${it.name}" src="${imgUrl(it.img)}" loading="lazy"></div>`
+  : `<div class="thumb" aria-hidden="true"><span style="font-size:28px; line-height:1">${it.emoji || "—"}</span></div>`;
 
         li.innerHTML = `
           ${thumb}
@@ -795,29 +948,32 @@ if (btnDelete) {
         img.loading = "lazy";
         photo.appendChild(img);
       }else{
-        const span = document.createElement("span");
-        span.textContent = "SIN FOTO";
-        photo.appendChild(span);
-      }
+  const span = document.createElement("span");
+  span.textContent = state.detail.emoji ? state.detail.emoji : "SIN FOTO";
+  span.style.fontSize = state.detail.emoji ? "56px" : "";
+  span.style.lineHeight = "1";
+  photo.appendChild(span);
+}
 
       const isEdit = state.detail.mode === "edit";
       $("#btnConfirmDetail").textContent = isEdit ? "Actualizar" : "Añadir";
       $("#btnDeleteItem").style.display = isEdit ? "inline-flex" : "none";
     }
 
-    function openDetailFromSearch(p){
-state.detail = {
-  isOpen:true,
-  origin:"search",
-  mode:"add",
-  itemId:null,
-  name:p.name,
-  img:p.img||null,
-  store: p.store || "TODOS",
-  qty:1
-};
-      renderDetail();
-    }
+  function openDetailFromSearch(p){
+  state.detail = {
+    isOpen:true,
+    origin:"search",
+    mode:"add",
+    itemId:null,
+    name:p.name,
+    img:p.img||null,
+    emoji: p.emoji || "",     // ✅ AÑADIDO
+    store: p.store || "TODOS",
+    qty:1
+  };
+  renderDetail();
+}
 
     function openDetailFromList(it){
       state.detail = { isOpen:true, origin:"list", mode:"edit", itemId:it.id, name:it.name, img:it.img||null, qty:it.qty };
@@ -831,21 +987,24 @@ state.detail = {
       navTo(origin);
     }
 
-    function addItem({ name, img=null, qty=1 }){
-      const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
-      const order = maxOrder + 1;
-state.items.push({
-  id: uid(),
-  name: norm(name),
-  img,
-  store: state.detail.store || "TODOS",
-  qty: Math.max(1, qty|0),
-  order
-});
-      saveStateToStorage();
-      cloudSave();
-      render();
-    }
+   function addItem({ name, img=null, emoji="", qty=1 }){
+  const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
+  const order = maxOrder + 1;
+
+  state.items.push({
+    id: uid(),
+    name: norm(name),
+    img,
+    emoji,                      // ✅ AÑADIDO
+    store: state.detail.store || "TODOS",
+    qty: Math.max(1, qty|0),
+    order
+  });
+
+  saveStateToStorage();
+  cloudSave();
+  render();
+}
 
     function updateItem(id, patch){
       const it = state.items.find(x=>x.id===id);
@@ -914,7 +1073,7 @@ state.items.push({
 
     $("#btnConfirmDetail").addEventListener("click", ()=>{
       if (state.detail.mode === "add"){
-        addItem({ name: state.detail.name, img: state.detail.img, qty: state.detail.qty });
+addItem({ name: state.detail.name, img: state.detail.img, emoji: state.detail.emoji || "", qty: state.detail.qty });
         closeDetail();
       }else{
         updateItem(state.detail.itemId, { qty: state.detail.qty });
