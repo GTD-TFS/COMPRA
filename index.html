@@ -376,7 +376,7 @@
       </div>
     </header>
 
-    <!-- SCREEN: BUSCAR (default) -->
+    <!-- SCREEN: BUSCAR (default si NO vienes con ?list=) -->
     <section id="screenSearch" class="screen is-active" aria-label="Buscar">
       <div class="h1">Buscar</div>
 
@@ -481,22 +481,133 @@
     </div>
   </dialog>
 
-  <!-- Dialog importar -->
-  <dialog id="dlgImportList">
-    <div class="dlg">
-      <h3>Importar lista</h3>
-      <p>Esta lista sustituirá la lista actual. ¿Continuar?</p>
-      <div class="actions">
-        <button id="dlgImportCancel" class="btn ghost" type="button">Cancelar</button>
-        <button id="dlgImportConfirm" class="btn primary" type="button">Continuar</button>
-      </div>
-    </div>
-  </dialog>
-
   <script type="module">
-    /* =========================================================
-       1) CONFIG
-       ========================================================= */
+    // =========================================================
+    // FIREBASE / FIRESTORE (LINK CORTO: ?list=ID)
+    // Pega TU firebaseConfig en el objeto.
+    // =========================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      // TODO: PEGA AQUÍ TU CONFIG DE FIREBASE
+      apiKey: "REEMPLAZA",
+      authDomain: "REEMPLAZA",
+      projectId: "REEMPLAZA",
+      storageBucket: "REEMPLAZA",
+      messagingSenderId: "REEMPLAZA",
+      appId: "REEMPLAZA"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    const db = getFirestore(fbApp);
+
+    const LS_LIST_ID = "pwa_list_id_v1";
+    let LIST_ID = null;
+    let stopCloud = null;
+    let cloudSaveTimer = null;
+
+    function readListIdFromUrl(){
+      const u = new URL(location.href);
+      return u.searchParams.get("list");
+    }
+    function setListIdInUrl(listId){
+      const u = new URL(location.href);
+      u.searchParams.set("list", listId);
+      history.replaceState(null, "", u.pathname + "?" + u.searchParams.toString());
+    }
+    function clearListIdFromUrl(){
+      const u = new URL(location.href);
+      u.searchParams.delete("list");
+      history.replaceState(null, "", u.pathname + (u.searchParams.toString() ? ("?" + u.searchParams.toString()) : ""));
+    }
+    function newId(){
+      return (crypto?.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2)));
+    }
+
+    function ensureListId(){
+      const fromUrl = readListIdFromUrl();
+      if (fromUrl){
+        localStorage.setItem(LS_LIST_ID, fromUrl);
+        return fromUrl;
+      }
+      const fromLocal = localStorage.getItem(LS_LIST_ID);
+      if (fromLocal) return fromLocal;
+      const id = newId();
+      localStorage.setItem(LS_LIST_ID, id);
+      setListIdInUrl(id);
+      return id;
+    }
+
+    async function cloudInit(){
+      LIST_ID = ensureListId();
+
+      if (typeof stopCloud === "function") stopCloud();
+      const ref = doc(db, "lists", LIST_ID);
+
+      // Si vienes con ?list=, quieres caer a LISTA
+      const cameFromLink = !!readListIdFromUrl();
+
+      try{
+        const snap = await getDoc(ref);
+        if (snap.exists()){
+          const data = snap.data() || {};
+          if (Array.isArray(data.items)){
+            state.items = data.items;
+            saveStateToStorage();
+            state.activeScreen = cameFromLink ? "list" : state.activeScreen;
+            render();
+          }
+        }else{
+          // Crea doc inicial con lo que haya local (o vacío)
+          await setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge: true });
+        }
+      }catch(e){
+        // Si Firestore falla (offline o config mal), seguimos con local
+        console.warn("cloudInit failed:", e);
+      }
+
+      // Realtime
+      try{
+        stopCloud = onSnapshot(ref, (s)=>{
+          if (!s.exists()) return;
+          const d = s.data() || {};
+          if (Array.isArray(d.items)){
+            state.items = d.items;
+            saveStateToStorage();
+            render();
+          }
+        });
+      }catch(e){
+        console.warn("onSnapshot failed:", e);
+      }
+    }
+
+    function cloudSave(){
+      if (!LIST_ID) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(async ()=>{
+        try{
+          const ref = doc(db, "lists", LIST_ID);
+          await setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge: true });
+        }catch(e){
+          console.warn("cloudSave failed:", e);
+        }
+      }, 150);
+    }
+
+    function buildShareUrlShort(){
+      const u = new URL(location.origin + location.pathname);
+      u.searchParams.set("list", LIST_ID || ensureListId());
+      return u.toString();
+    }
+
+    // =========================================================
+    // APP ORIGINAL
+    // =========================================================
     const CONFIG = {
       imageBasePath: "./images/",
       catalog: [
@@ -512,9 +623,6 @@
       ]
     };
 
-    /* =========================================================
-       2) ESTADO CENTRAL
-       ========================================================= */
     const state = {
       activeScreen: "search", // "search" | "list"
       searchText: "",
@@ -530,15 +638,10 @@
       }
     };
 
-    /* =========================================================
-       2.1) PERSISTENCIA LOCAL
-       ========================================================= */
     const STORAGE_KEY = "compra_list_v1";
-
     function saveStateToStorage(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
     }
-
     function loadStateFromStorage(){
       try{
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -548,99 +651,21 @@
       }catch(_){}
     }
 
-    /* =========================================================
-       3) UTILIDADES
-       ========================================================= */
     const $ = (sel, root=document) => root.querySelector(sel);
-
-    const norm = (s) => (s ?? "")
-      .toString()
-      .trim()
-      .toUpperCase();
-
+    const norm = (s) => (s ?? "").toString().trim().toUpperCase();
     const contains = (haystack, needle) => {
       const h = norm(haystack);
       const n = norm(needle);
       return n.length === 0 ? true : h.includes(n);
     };
-
     const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
     const imgUrl = (imgName) => imgName ? (CONFIG.imageBasePath + imgName) : null;
 
-    /* =========================================================
-       3.1) COMPARTIR / IMPORTAR POR ENLACE (sin backend)
-       - FIX REAL: payload compacto para que WhatsApp NO "corte" el link
-       ========================================================= */
-    function b64urlEncode(str){
-      const b64 = btoa(unescape(encodeURIComponent(str)));
-      return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    }
-    function b64urlDecode(b64url){
-      const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
-      const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
-      const bin = atob(b64 + pad);
-      return decodeURIComponent(escape(bin));
-    }
-
-    // Payload compacto: a = [[name, imgOrEmpty, qty], ...]
-    function buildSharePayload(){
-      const sorted = [...state.items].sort((x,y)=>((x.order ?? 0) - (y.order ?? 0)));
-      return {
-        v: 1,
-        a: sorted.map(it => [ it?.name || "", it?.img || "", it?.qty || 1 ])
-      };
-    }
-
-    function buildShareUrl(){
-      const payload = JSON.stringify(buildSharePayload());
-      const token = b64urlEncode(payload);
-      const base = location.origin + location.pathname;
-      return base + "?i=" + token;
-    }
-
-    function readImportToken(){
-      const qs = new URLSearchParams(location.search || "");
-      const qi = qs.get("i");
-      if (qi) return qi;
-
-      const h = location.hash || "";
-      const m = h.match(/[#&]i=([^&]+)/);
-      return m ? m[1] : null;
-    }
-
-    function clearImportToken(){
-      const url = new URL(location.href);
-      url.searchParams.delete("i");
-      url.hash = "";
-      history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
-    }
-
-    let pendingImportToken = null;
-
-    function maybePromptImport(){
-      const t = readImportToken();
-      if (!t) return;
-
-      pendingImportToken = t;
-
-      render(); // pinta base (estado actual)
-      const dlg = document.getElementById("dlgImportList");
-      if (dlg && typeof dlg.showModal === "function"){
-        dlg.showModal();
-      }
-    }
-
-    /* =========================================================
-       4) NAVEGACIÓN
-       ========================================================= */
     function navTo(screen){
       state.activeScreen = screen;
       render();
     }
 
-    /* =========================================================
-       5) RENDER
-       ========================================================= */
     function render(){
       $("#screenSearch").classList.toggle("is-active", state.activeScreen === "search");
       $("#screenList").classList.toggle("is-active", state.activeScreen === "list");
@@ -684,9 +709,7 @@
       const wrap = $("#shoppingList");
       wrap.innerHTML = "";
 
-      // sort seguro aunque falte order (legacy)
       const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
-
       $("#emptyListHint").style.display = items.length ? "none" : "block";
 
       for (const it of items){
@@ -750,9 +773,6 @@
       $("#btnDeleteItem").style.display = isEdit ? "inline-flex" : "none";
     }
 
-    /* =========================================================
-       6) DETALLE
-       ========================================================= */
     function openDetailFromSearch(p){
       state.detail = { isOpen:true, origin:"search", mode:"add", itemId:null, name:p.name, img:p.img||null, qty:1 };
       renderDetail();
@@ -770,14 +790,12 @@
       navTo(origin);
     }
 
-    /* =========================================================
-       7) MUTACIONES LISTA
-       ========================================================= */
     function addItem({ name, img=null, qty=1 }){
       const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
       const order = maxOrder + 1;
       state.items.push({ id: uid(), name: norm(name), img, qty: Math.max(1, qty|0), order });
       saveStateToStorage();
+      cloudSave();
       render();
     }
 
@@ -786,24 +804,24 @@
       if (!it) return;
       if (patch.qty != null) it.qty = Math.max(1, patch.qty|0);
       saveStateToStorage();
+      cloudSave();
       render();
     }
 
     function deleteItem(id){
       state.items = state.items.filter(x=>x.id!==id);
       saveStateToStorage();
+      cloudSave();
       render();
     }
 
     function clearList(){
       state.items = [];
       saveStateToStorage();
+      cloudSave();
       render();
     }
 
-    /* =========================================================
-       8) EVENTOS
-       ========================================================= */
     document.addEventListener("click", (ev)=>{
       const b = ev.target.closest("[data-nav]");
       if (!b) return;
@@ -838,7 +856,6 @@
       state.detail.qty = Math.max(1, state.detail.qty - 1);
       renderDetail();
     });
-
     $("#btnQtyPlus").addEventListener("click", ()=>{
       state.detail.qty = state.detail.qty + 1;
       renderDetail();
@@ -860,9 +877,9 @@
       closeDetail();
     });
 
-    // Compartir (con payload compacto)
+    // Compartir: link corto ?list=ID (abre la misma lista en otro móvil)
     $("#btnShareList").addEventListener("click", async ()=>{
-      const url = buildShareUrl();
+      const url = buildShareUrlShort();
 
       try{
         if (navigator.share){
@@ -879,87 +896,26 @@
       }
     });
 
-    // Borrar lista
     $("#btnDeleteList").addEventListener("click", ()=>{
       $("#dlgDeleteList").showModal();
     });
-
     $("#dlgCancel").addEventListener("click", ()=>$("#dlgDeleteList").close());
-
     $("#dlgConfirm").addEventListener("click", ()=>{
       $("#dlgDeleteList").close();
       clearList();
     });
 
-    // Importar
-    $("#dlgImportCancel").addEventListener("click", ()=>{
-      $("#dlgImportList").close();
-      pendingImportToken = null;
-      clearImportToken();
-      navTo("search");
-    });
-
-    $("#dlgImportConfirm").addEventListener("click", ()=>{
-      $("#dlgImportList").close();
-
-      const token = pendingImportToken || readImportToken();
-      pendingImportToken = null;
-
-      if (!token){
-        clearImportToken();
-        navTo("search");
-        return;
-      }
-
-      try{
-        const jsonStr = b64urlDecode(token);
-        const payload = JSON.parse(jsonStr);
-
-        // Importa formato compacto v1: {v:1, a:[[name,img,qty],...]}
-        if (payload && payload.v === 1 && Array.isArray(payload.a)){
-          state.items = payload.a.map((row, idx)=>{
-            const name = row?.[0] ?? "";
-            const img  = row?.[1] ?? "";
-            const qty  = row?.[2] ?? 1;
-            return {
-              id: uid(),
-              name: norm(name),
-              img: img ? img : null,
-              qty: Math.max(1, qty|0),
-              order: idx + 1
-            };
-          });
-
-          saveStateToStorage();
-        }else{
-          throw new Error("bad payload");
-        }
-      }catch(e){
-        alert("No se pudo importar la lista (enlace inválido).");
-      }
-
-      clearImportToken();
-      navTo("list");
-    });
-
     window.addEventListener("online", render);
     window.addEventListener("offline", render);
 
-    // Si llega un link con i= mientras la app ya está viva
-    window.addEventListener("hashchange", maybePromptImport);
-    window.addEventListener("pageshow", maybePromptImport);
-    window.addEventListener("popstate", maybePromptImport);
-
-    /* =========================================================
-       9) ARRANQUE
-       - Default: SEARCH
-       - Con token: diálogo → Continuar → LIST
-       ========================================================= */
+    // Arranque:
+    // - Por defecto: SEARCH
+    // - Si viene con ?list= : al cargar nube, cambiamos a LIST
     function boot(){
       loadStateFromStorage();
       state.activeScreen = "search";
       render();
-      maybePromptImport();
+      cloudInit();
     }
     boot();
   </script>
