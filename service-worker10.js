@@ -3,7 +3,7 @@
    - Assets: cache-first (rápido y offline)
 */
 
-const CACHE_VERSION = "compra-v2";
+const CACHE_VERSION = "compra-v3";
 const CORE_ASSETS = [
   "./",
   "./index.html",
