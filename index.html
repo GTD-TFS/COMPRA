@@ -526,8 +526,8 @@ function ensureListId(){
 }
 
 async function cloudInit(state){
-  LIST_ID = ensureListId();
-  const ref = doc(db, "lists", LIST_ID);
+  LIST_ID = "global";
+  const ref = doc(db, "lists", "global");
 
   const snap = await getDoc(ref);
   if (snap.exists()){
