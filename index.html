@@ -483,20 +483,14 @@
 
 <script type="module">
 /* =========================================================
-   FIREBASE / FIRESTORE — SIN BUILD, SIN NPM (CORRECTO)
+   FIREBASE / FIRESTORE — SIN BUILD, SIN NPM
    ========================================================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
-  serverTimestamp
+  getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* ===== CONFIG ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyC5DOjHH9hWMWotY7OWzdEV7PGBNkkohR8",
   authDomain: "compra-250f9.firebaseapp.com",
@@ -506,70 +500,44 @@ const firebaseConfig = {
   appId: "1:329069667450:web:d063aed6336a9382f447c3"
 };
 
-/* ===== INIT ===== */
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
-/* =========================================================
-   IDENTIDAD DE LISTA (URL + LOCAL)
-   ========================================================= */
 const LS_LIST_ID = "pwa_list_id_v1";
 let LIST_ID = null;
-let stopCloud = null;
 let cloudSaveTimer = null;
 
-function newId(){
-  return crypto.randomUUID();
-}
-
-function readListIdFromUrl(){
-  return new URL(location.href).searchParams.get("list");
-}
-
+function newId(){ return crypto.randomUUID(); }
+function readListIdFromUrl(){ return new URL(location.href).searchParams.get("list"); }
 function setListIdInUrl(id){
   const u = new URL(location.href);
   u.searchParams.set("list", id);
   history.replaceState(null, "", u.toString());
 }
-
 function ensureListId(){
   const fromUrl = readListIdFromUrl();
-  if (fromUrl){
-    localStorage.setItem(LS_LIST_ID, fromUrl);
-    return fromUrl;
-  }
+  if (fromUrl){ localStorage.setItem(LS_LIST_ID, fromUrl); return fromUrl; }
   const fromLocal = localStorage.getItem(LS_LIST_ID);
   if (fromLocal) return fromLocal;
-
   const id = newId();
   localStorage.setItem(LS_LIST_ID, id);
   setListIdInUrl(id);
   return id;
 }
 
-/* =========================================================
-   FIRESTORE SYNC
-   ========================================================= */
 async function cloudInit(state){
   LIST_ID = ensureListId();
   const ref = doc(db, "lists", LIST_ID);
 
-  // Carga inicial
   const snap = await getDoc(ref);
   if (snap.exists()){
     const data = snap.data();
-    if (Array.isArray(data.items)){
-      state.items = data.items;
-    }
-  }else{
-    await setDoc(ref, {
-      items: state.items,
-      createdAt: serverTimestamp()
-    });
+    if (Array.isArray(data.items)) state.items = data.items;
+  } else {
+    await setDoc(ref, { items: state.items, createdAt: serverTimestamp() });
   }
 
-  // Realtime
-  stopCloud = onSnapshot(ref, (s)=>{
+  onSnapshot(ref, s=>{
     if (!s.exists()) return;
     const d = s.data();
     if (Array.isArray(d.items)){
@@ -579,30 +547,24 @@ async function cloudInit(state){
   });
 }
 
-function cloudSave(state){
+function cloudSave(){
   if (!LIST_ID) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(()=>{
     const ref = doc(db, "lists", LIST_ID);
-    setDoc(ref, {
-      items: state.items,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge:true });
   }, 200);
 }
 
-/* =========================================================
-   COMPARTIR
-   ========================================================= */
 function buildShareUrl(){
   const u = new URL(location.origin + location.pathname);
   u.searchParams.set("list", LIST_ID || ensureListId());
   return u.toString();
 }
-</script>
-    // =========================================================
-    // APP ORIGINAL
-    // =========================================================
+
+/* ===== FIX MINIMO ===== */
+function buildShareUrlShort(){ return buildShareUrl(); }
+    
     const CONFIG = {
       imageBasePath: "./images/",
       catalog: [
@@ -910,7 +872,7 @@ function buildShareUrl(){
       loadStateFromStorage();
       state.activeScreen = "search";
       render();
-      cloudInit();
+      cloudInit(state);
     }
     boot();
   </script>
