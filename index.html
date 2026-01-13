@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0b1220" />
   <title>Lista • PWA</title>
 
@@ -364,16 +365,18 @@
     .dlg h3{margin:0 0 6px; font-size:16px}
     .dlg p{margin:0 0 12px; color:var(--muted)}
     .dlg .actions{display:flex; gap:10px; justify-content:flex-end}
+    input,
+textarea,
+select {
+  font-size: 16px;
+}
   </style>
 </head>
 
 <body>
   <main class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span>Lista</span>
-       
-      </div>
+   
+      
     </header>
 
     <!-- SCREEN: BUSCAR (default si NO vienes con ?list=) -->
@@ -382,8 +385,8 @@
 
       <div class="searchbar">
         <input id="searchInput" class="input" type="search" inputmode="search"
-               autocomplete="off" />
-        <button id="btnClearSearch" class="btn ghost" type="button" title="Limpiar">Limpiar</button>
+                autocomplete="off" />
+        
       </div>
 
       <div id="productGrid" class="grid" role="list" aria-label="Resultados"></div>
@@ -394,6 +397,8 @@
         </div>
         <button id="btnAddFree" class="btn primary" type="button">Añadir</button>
       </div>
+
+      
     </section>
 
     <!-- SCREEN: LISTA -->
@@ -405,6 +410,7 @@
           <button id="btnDeleteList" class="btn danger" type="button">Eliminar lista</button>
         </div>
       </div>
+
 
       <div id="shoppingList" class="list" aria-label="Productos en la lista"></div>
 
@@ -452,6 +458,10 @@
             <button id="btnConfirmDetail" class="btn primary" type="button">Añadir</button>
             <button id="btnDeleteItem" class="btn danger" type="button" style="display:none">Borrar</button>
           </div>
+
+          <p class="hint" style="margin:0">
+            Al cerrar vuelves a donde estabas (Buscar o Lista).
+          </p>
         </div>
       </div>
     </div>
@@ -615,7 +625,8 @@ function buildShareUrlShort(){ return buildShareUrl(); }
       $("#screenSearch").classList.toggle("is-active", state.activeScreen === "search");
       $("#screenList").classList.toggle("is-active", state.activeScreen === "list");
 
-      $("#appStatus").textContent = navigator.onLine ? "online" : "offline";
+      const s = $("#appStatus");
+if (s) s.textContent = navigator.onLine ? "online" : "offline";
 
       renderSearch();
       renderList();
@@ -656,7 +667,10 @@ function buildShareUrlShort(){ return buildShareUrl(); }
 
       const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
      
-
+const btnDelete = $("#btnDeleteList");
+if (btnDelete) {
+  btnDelete.style.display = state.items.length ? "inline-flex" : "none";
+}
       for (const it of items){
         const li = document.createElement("div");
         li.className = "li";
@@ -780,11 +794,7 @@ function buildShareUrlShort(){ return buildShareUrl(); }
       renderSearch();
     });
 
-    $("#btnClearSearch").addEventListener("click", ()=>{
-      state.searchText = "";
-      renderSearch();
-      $("#searchInput").focus();
-    });
+   
 
     $("#btnAddFree").addEventListener("click", ()=>{
       const name = norm(state.searchText);
