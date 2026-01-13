@@ -521,12 +521,15 @@ select {
 <script type="module">
 /* =========================================================
    FIREBASE / FIRESTORE — SIN BUILD, SIN NPM
+   (ARREGLADO: arranque offline + no pérdida al reconectar)
    ========================================================= */
 
+/* --- QUITADO: imports estáticos que rompen offline ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+*/
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5DOjHH9hWMWotY7OWzdEV7PGBNkkohR8",
@@ -537,8 +540,29 @@ const firebaseConfig = {
   appId: "1:329069667450:web:d063aed6336a9382f447c3"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
+/* ===== Firebase dinámico (offline-safe) ===== */
+let fb = null;   // módulos firebase cargados
+let db = null;   // firestore instance
+let unsub = null;
+
+async function ensureFirebase(){
+  if (!navigator.onLine) return false;
+  if (fb && db) return true;
+
+  try{
+    const appMod = await import("https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js");
+    const fsMod  = await import("https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js");
+    fb = { ...appMod, ...fsMod };
+
+    const firebaseApp = fb.initializeApp(firebaseConfig);
+    db = fb.getFirestore(firebaseApp);
+    return true;
+  }catch(e){
+    console.warn("Firebase no disponible (offline/bloqueado):", e);
+    fb = null; db = null;
+    return false;
+  }
+}
 
 const LS_LIST_ID = "pwa_list_id_v1";
 let LIST_ID = null;
@@ -562,34 +586,61 @@ function ensureListId(){
   return id;
 }
 
+/* ===== cloudInit ARREGLADO: no rompe offline + no pisa local con nube vacía ===== */
 async function cloudInit(state){
+  const ok = await ensureFirebase();
+  if (!ok) return;
+
   LIST_ID = "global";
-  const ref = doc(db, "lists", "global");
+  const ref = fb.doc(db, "lists", "global");
 
-  const snap = await getDoc(ref);
-  if (snap.exists()){
-    const data = snap.data();
-    if (Array.isArray(data.items)) state.items = data.items;
-  } else {
-    await setDoc(ref, { items: state.items, createdAt: serverTimestamp() });
-  }
+  if (unsub){ unsub(); unsub = null; }
 
-  onSnapshot(ref, s=>{
-    if (!s.exists()) return;
-    const d = s.data();
-    if (Array.isArray(d.items)){
-      state.items = d.items;
-      render();
+  try{
+    const snap = await fb.getDoc(ref);
+
+    if (snap.exists()){
+      const data = snap.data();
+      const remoteItems = Array.isArray(data.items) ? data.items : [];
+
+      // Si local tiene datos y nube está vacía: sube local en vez de borrarlo.
+      if (state.items.length > 0 && remoteItems.length === 0){
+        await fb.setDoc(ref, { items: state.items, updatedAt: fb.serverTimestamp() }, { merge:true });
+      } else {
+        state.items = remoteItems;
+        saveStateToStorage();
+      }
+    } else {
+      await fb.setDoc(ref, { items: state.items, createdAt: fb.serverTimestamp() });
     }
-  });
+
+    unsub = fb.onSnapshot(ref, s=>{
+      if (!s.exists()) return;
+      const d = s.data();
+      if (!Array.isArray(d.items)) return;
+
+      // Protección: no machacar local no-vacío con nube vacía
+      if (state.items.length > 0 && d.items.length === 0) return;
+
+      state.items = d.items;
+      saveStateToStorage();
+      render();
+    });
+
+  }catch(e){
+    console.warn("cloudInit falló (probable offline):", e);
+  }
 }
 
+/* ===== cloudSave ARREGLADO: solo si firebase cargado ===== */
 function cloudSave(){
   if (!LIST_ID) return;
+  if (!fb || !db) return;
+
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(()=>{
-    const ref = doc(db, "lists", LIST_ID);
-    setDoc(ref, { items: state.items, updatedAt: serverTimestamp() }, { merge:true });
+    const ref = fb.doc(db, "lists", LIST_ID);
+    fb.setDoc(ref, { items: state.items, updatedAt: fb.serverTimestamp() }, { merge:true });
   }, 200);
 }
 
@@ -601,8 +652,8 @@ function buildShareUrl(){
 
 /* ===== FIX MINIMO ===== */
 function buildShareUrlShort(){ return buildShareUrl(); }
-    
- const CONFIG = {
+
+const CONFIG = {
   imageBasePath: "./images/",
   catalog: [
     { name: "LECHE", img: "leche.jpg", store: "MERCADONA" },
@@ -771,98 +822,96 @@ const GENERICOS = [
   { name: "PILAS", emoji: "🔋", store: "TODOS" },
   { name: "BOMBILLA", emoji: "💡", store: "TODOS" },
   { name: "CINTA ADHESIVA", emoji: "📦", store: "TODOS" }
-
 ];
 
-    const state = {
-      activeScreen: "search", // "search" | "list"
-      searchText: "",
-      items: [],
-      detail: {
-        isOpen: false,
-        origin: "search", // "search" | "list"
-        mode: "add",      // "add" | "edit"
-        itemId: null,
-        name: "",
-        img: null,
-        qty: 1
-      }
-    };
+const state = {
+  activeScreen: "search", // "search" | "list"
+  searchText: "",
+  items: [],
+  detail: {
+    isOpen: false,
+    origin: "search", // "search" | "list"
+    mode: "add",      // "add" | "edit"
+    itemId: null,
+    name: "",
+    img: null,
+    qty: 1
+  }
+};
 
-    const STORAGE_KEY = "compra_list_v1";
-    function saveStateToStorage(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
-    }
-    function loadStateFromStorage(){
-      try{
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data && Array.isArray(data.items)) state.items = data.items;
-      }catch(_){}
-    }
+const STORAGE_KEY = "compra_list_v1";
+function saveStateToStorage(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
+}
+function loadStateFromStorage(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data && Array.isArray(data.items)) state.items = data.items;
+  }catch(_){}
+}
 
-    const $ = (sel, root=document) => root.querySelector(sel);
-    const norm = (s) => (s ?? "").toString().trim().toUpperCase();
-    const contains = (haystack, needle) => {
-      const h = norm(haystack);
-      const n = norm(needle);
-      return n.length === 0 ? true : h.includes(n);
-    };
-    const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
-    const imgUrl = (imgName) => imgName ? (CONFIG.imageBasePath + imgName) : null;
+const $ = (sel, root=document) => root.querySelector(sel);
+const norm = (s) => (s ?? "").toString().trim().toUpperCase();
+const contains = (haystack, needle) => {
+  const h = norm(haystack);
+  const n = norm(needle);
+  return n.length === 0 ? true : h.includes(n);
+};
+const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+const imgUrl = (imgName) => imgName ? (CONFIG.imageBasePath + imgName) : null;
 
-    function navTo(screen){
-      state.activeScreen = screen;
-      render();
-    }
+function navTo(screen){
+  state.activeScreen = screen;
+  render();
+}
 
-    function render(){
-      $("#screenSearch").classList.toggle("is-active", state.activeScreen === "search");
-      $("#screenList").classList.toggle("is-active", state.activeScreen === "list");
+function render(){
+  $("#screenSearch").classList.toggle("is-active", state.activeScreen === "search");
+  $("#screenList").classList.toggle("is-active", state.activeScreen === "list");
 
-      const s = $("#appStatus");
-if (s) s.textContent = navigator.onLine ? "online" : "offline";
+  const s = $("#appStatus");
+  if (s) s.textContent = navigator.onLine ? "online" : "offline";
 
-      renderSearch();
-      renderList();
-      renderDetail();
-        document.querySelectorAll('.bottombar .btn').forEach(b=>{
-    b.classList.toggle(
-      'is-active',
-      b.dataset.nav === state.activeScreen
-    );
+  renderSearch();
+  renderList();
+  renderDetail();
+
+  document.querySelectorAll('.bottombar .btn').forEach(b=>{
+    b.classList.toggle('is-active', b.dataset.nav === state.activeScreen);
   });
-    }
+}
+
 let _lastSearchKey = "";
-    function renderSearch(){
-      if (state.activeScreen !== "search") return;
+function renderSearch(){
+  if (state.activeScreen !== "search") return;
 
-      $("#searchInput").value = state.searchText;
+  $("#searchInput").value = state.searchText;
 
-const storeSel = $("#storeFilter")?.value || "ALL";
+  const storeSel = $("#storeFilter")?.value || "ALL";
 
-const q = norm(state.searchText);
-const searchKey = storeSel + "|" + q;
-if (searchKey === _lastSearchKey) return;  // no tocar DOM si no cambió nada
-_lastSearchKey = searchKey;
-const source = q ? [...CONFIG.catalog, ...GENERICOS] : CONFIG.catalog; // genéricos SOLO si hay texto
+  const q = norm(state.searchText);
+  const searchKey = storeSel + "|" + q;
+  if (searchKey === _lastSearchKey) return;
+  _lastSearchKey = searchKey;
 
-const results = source.filter(p => {
-  if (!contains(p.name, state.searchText)) return false;
-  if (storeSel === "ALL") return true;
-  return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
-});
+  const source = q ? [...CONFIG.catalog, ...GENERICOS] : CONFIG.catalog;
 
-      const grid = $("#productGrid");
-      grid.innerHTML = "";
-      console.log("RESULTS sample:", results.slice(0, 12).map(x => ({ name:x.name, img:x.img, store:x.store })));
-      for (const p of results){
-        const el = document.createElement("div");
-        el.className = "pitem";
-        el.setAttribute("role","listitem");
-        const hasImg = !!p.img;
-        el.innerHTML = `
+  const results = source.filter(p => {
+    if (!contains(p.name, state.searchText)) return false;
+    if (storeSel === "ALL") return true;
+    return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
+  });
+
+  const grid = $("#productGrid");
+  grid.innerHTML = "";
+  console.log("RESULTS sample:", results.slice(0, 12).map(x => ({ name:x.name, img:x.img, store:x.store })));
+  for (const p of results){
+    const el = document.createElement("div");
+    el.className = "pitem";
+    el.setAttribute("role","listitem");
+    el.innerHTML = `
 <div class="img">
   ${
     p.img
@@ -870,100 +919,99 @@ const results = source.filter(p => {
       : `<span style="font-size:42px; line-height:1">${p.emoji || ""}</span>`
   }
 </div>
-          <div class="label" title="${p.name}">${p.name}</div>
-        `;
-        el.addEventListener("click", () => openDetailFromSearch(p));
-        grid.appendChild(el);
-      }
+      <div class="label" title="${p.name}">${p.name}</div>
+    `;
+    el.addEventListener("click", () => openDetailFromSearch(p));
+    grid.appendChild(el);
+  }
 
-      const allByText = [...CONFIG.catalog, ...GENERICOS].filter(p => {
-  if (!contains(p.name, state.searchText)) return false;
-  if (storeSel === "ALL") return true;
-  return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
-});
+  const allByText = [...CONFIG.catalog, ...GENERICOS].filter(p => {
+    if (!contains(p.name, state.searchText)) return false;
+    if (storeSel === "ALL") return true;
+    return (p.store || "ALL") === storeSel || (p.store === "TODOS" && storeSel !== "ALL");
+  });
 
-const showFree = norm(state.searchText).length > 0 && allByText.length === 0;
-      $("#addFreeBox").classList.toggle("is-visible", showFree);
-      $("#freeText").textContent = norm(state.searchText);
-    }
-
-    function renderList(){
-      if (state.activeScreen !== "list") return;
-
-      const wrap = $("#shoppingList");
-      wrap.innerHTML = "";
-
-      const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
-     
-const btnDelete = $("#btnDeleteList");
-if (btnDelete) {
-  btnDelete.style.display = state.items.length ? "inline-flex" : "none";
-}
-      for (const it of items){
-        const li = document.createElement("div");
-        li.className = "li";
-
-       const thumb = it.img
-  ? `<div class="thumb"><img alt="${it.name}" src="${imgUrl(it.img)}" loading="lazy"></div>`
-  : `<div class="thumb" aria-hidden="true"><span style="font-size:28px; line-height:1">${it.emoji || "—"}</span></div>`;
-
-        li.innerHTML = `
-          ${thumb}
-          <div class="meta">
-            <p class="name" title="${it.name}">${it.name}</p>
-<p class="sub">${it.store || "TODOS"}</p>
-          </div>
-          <div class="qty">
-            <div class="pill" aria-label="Cantidad">${it.qty}</div>
-            <button class="btn ghost" type="button" data-act="delete" title="Eliminar">🗑️</button>
-          </div>
-        `;
-
-        li.addEventListener("click", (ev)=>{
-          const btn = ev.target.closest('button[data-act="delete"]');
-          if (btn) return;
-          openDetailFromList(it);
-        });
-
-        li.querySelector('button[data-act="delete"]').addEventListener("click", (ev)=>{
-  ev.stopPropagation();
-  if (!confirm(`¿Eliminar "${it.name}" de la lista?`)) return;
-  deleteItem(it.id);
-});
-
-        wrap.appendChild(li);
-      }
-    }
-
-    function renderDetail(){
-      $("#detailBackdrop").classList.toggle("is-open", state.detail.isOpen);
-      if (!state.detail.isOpen) return;
-
-      $("#detailTitle").textContent = state.detail.name;
-      $("#detailQty").textContent = String(state.detail.qty);
-
-      const photo = $("#detailPhoto");
-      photo.innerHTML = "";
-      if (state.detail.img){
-        const img = document.createElement("img");
-        img.alt = state.detail.name;
-        img.src = imgUrl(state.detail.img);
-        img.loading = "lazy";
-        photo.appendChild(img);
-      }else{
-  const span = document.createElement("span");
-  span.textContent = state.detail.emoji ? state.detail.emoji : "SIN FOTO";
-  span.style.fontSize = state.detail.emoji ? "56px" : "";
-  span.style.lineHeight = "1";
-  photo.appendChild(span);
+  const showFree = norm(state.searchText).length > 0 && allByText.length === 0;
+  $("#addFreeBox").classList.toggle("is-visible", showFree);
+  $("#freeText").textContent = norm(state.searchText);
 }
 
-      const isEdit = state.detail.mode === "edit";
-      $("#btnConfirmDetail").textContent = isEdit ? "Actualizar" : "Añadir";
-      $("#btnDeleteItem").style.display = isEdit ? "inline-flex" : "none";
-    }
+function renderList(){
+  if (state.activeScreen !== "list") return;
 
-  function openDetailFromSearch(p){
+  const wrap = $("#shoppingList");
+  wrap.innerHTML = "";
+
+  const items = [...state.items].sort((a,b)=>((a.order ?? 0) - (b.order ?? 0)));
+
+  const btnDelete = $("#btnDeleteList");
+  if (btnDelete) btnDelete.style.display = state.items.length ? "inline-flex" : "none";
+
+  for (const it of items){
+    const li = document.createElement("div");
+    li.className = "li";
+
+    const thumb = it.img
+      ? `<div class="thumb"><img alt="${it.name}" src="${imgUrl(it.img)}" loading="lazy"></div>`
+      : `<div class="thumb" aria-hidden="true"><span style="font-size:28px; line-height:1">${it.emoji || "—"}</span></div>`;
+
+    li.innerHTML = `
+      ${thumb}
+      <div class="meta">
+        <p class="name" title="${it.name}">${it.name}</p>
+        <p class="sub">${it.store || "TODOS"}</p>
+      </div>
+      <div class="qty">
+        <div class="pill" aria-label="Cantidad">${it.qty}</div>
+        <button class="btn ghost" type="button" data-act="delete" title="Eliminar">🗑️</button>
+      </div>
+    `;
+
+    li.addEventListener("click", (ev)=>{
+      const btn = ev.target.closest('button[data-act="delete"]');
+      if (btn) return;
+      openDetailFromList(it);
+    });
+
+    li.querySelector('button[data-act="delete"]').addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      if (!confirm(`¿Eliminar "${it.name}" de la lista?`)) return;
+      deleteItem(it.id);
+    });
+
+    wrap.appendChild(li);
+  }
+}
+
+function renderDetail(){
+  $("#detailBackdrop").classList.toggle("is-open", state.detail.isOpen);
+  if (!state.detail.isOpen) return;
+
+  $("#detailTitle").textContent = state.detail.name;
+  $("#detailQty").textContent = String(state.detail.qty);
+
+  const photo = $("#detailPhoto");
+  photo.innerHTML = "";
+  if (state.detail.img){
+    const img = document.createElement("img");
+    img.alt = state.detail.name;
+    img.src = imgUrl(state.detail.img);
+    img.loading = "lazy";
+    photo.appendChild(img);
+  }else{
+    const span = document.createElement("span");
+    span.textContent = state.detail.emoji ? state.detail.emoji : "SIN FOTO";
+    span.style.fontSize = state.detail.emoji ? "56px" : "";
+    span.style.lineHeight = "1";
+    photo.appendChild(span);
+  }
+
+  const isEdit = state.detail.mode === "edit";
+  $("#btnConfirmDetail").textContent = isEdit ? "Actualizar" : "Añadir";
+  $("#btnDeleteItem").style.display = isEdit ? "inline-flex" : "none";
+}
+
+function openDetailFromSearch(p){
   state.detail = {
     isOpen:true,
     origin:"search",
@@ -971,26 +1019,26 @@ if (btnDelete) {
     itemId:null,
     name:p.name,
     img:p.img||null,
-    emoji: p.emoji || "",     // ✅ AÑADIDO
+    emoji: p.emoji || "",
     store: p.store || "TODOS",
     qty:1
   };
   renderDetail();
 }
 
-    function openDetailFromList(it){
-      state.detail = { isOpen:true, origin:"list", mode:"edit", itemId:it.id, name:it.name, img:it.img||null, qty:it.qty };
-      renderDetail();
-    }
+function openDetailFromList(it){
+  state.detail = { isOpen:true, origin:"list", mode:"edit", itemId:it.id, name:it.name, img:it.img||null, qty:it.qty };
+  renderDetail();
+}
 
-    function closeDetail(){
-      const origin = state.detail.origin;
-      state.detail.isOpen = false;
-      render();
-      navTo(origin);
-    }
+function closeDetail(){
+  const origin = state.detail.origin;
+  state.detail.isOpen = false;
+  render();
+  navTo(origin);
+}
 
-   function addItem({ name, img=null, emoji="", qty=1 }){
+function addItem({ name, img=null, emoji="", qty=1 }){
   const maxOrder = state.items.length ? Math.max(...state.items.map(x=> (x.order ?? 0))) : 0;
   const order = maxOrder + 1;
 
@@ -998,7 +1046,7 @@ if (btnDelete) {
     id: uid(),
     name: norm(name),
     img,
-    emoji,                      // ✅ AÑADIDO
+    emoji,
     store: state.detail.store || "TODOS",
     qty: Math.max(1, qty|0),
     order
@@ -1009,110 +1057,117 @@ if (btnDelete) {
   render();
 }
 
-    function updateItem(id, patch){
-      const it = state.items.find(x=>x.id===id);
-      if (!it) return;
-      if (patch.qty != null) it.qty = Math.max(1, patch.qty|0);
-      saveStateToStorage();
-      cloudSave();
-      render();
-    }
+function updateItem(id, patch){
+  const it = state.items.find(x=>x.id===id);
+  if (!it) return;
+  if (patch.qty != null) it.qty = Math.max(1, patch.qty|0);
+  saveStateToStorage();
+  cloudSave();
+  render();
+}
 
-    function deleteItem(id){
-      state.items = state.items.filter(x=>x.id!==id);
-      saveStateToStorage();
-      cloudSave();
-      render();
-    }
+function deleteItem(id){
+  state.items = state.items.filter(x=>x.id!==id);
+  saveStateToStorage();
+  cloudSave();
+  render();
+}
 
-    function clearList(){
-      state.items = [];
-      saveStateToStorage();
-      cloudSave();
-      render();
-    }
+function clearList(){
+  state.items = [];
+  saveStateToStorage();
+  cloudSave();
+  render();
+}
 
-    document.addEventListener("click", (ev)=>{
-      const b = ev.target.closest("[data-nav]");
-      if (!b) return;
-      const screen = b.dataset.nav;
-      if (screen === "search") navTo("search");
-      if (screen === "list") navTo("list");
-    });
+document.addEventListener("click", (ev)=>{
+  const b = ev.target.closest("[data-nav]");
+  if (!b) return;
+  const screen = b.dataset.nav;
+  if (screen === "search") navTo("search");
+  if (screen === "list") navTo("list");
+});
 
-    $("#searchInput").addEventListener("input", (ev)=>{
-      state.searchText = ev.target.value || "";
-      renderSearch();
-    });
-
-    $("#storeFilter").addEventListener("change", ()=>{
+$("#searchInput").addEventListener("input", (ev)=>{
+  state.searchText = ev.target.value || "";
   renderSearch();
-});   
+});
 
-   $("#btnAddFree").addEventListener("click", ()=>{
+$("#storeFilter").addEventListener("change", ()=>{
+  renderSearch();
+});
+
+$("#btnAddFree").addEventListener("click", ()=>{
   const name = norm(state.searchText);
   if (!name) return;
   addItem({ name, img: null, qty: 1 });
 
-  // UX: al añadir “libre”, vuelve a Buscar (feedback inmediato)
   state.searchText = "";
-  navTo("search");      // o "search" si ya estás ahí, fuerza render y se nota la acción
+  navTo("search");
   $("#searchInput")?.focus();
 });
 
-    $("#btnCloseDetail").addEventListener("click", closeDetail);
-    $("#detailBackdrop").addEventListener("click", (ev)=>{
-      if (ev.target === $("#detailBackdrop")) closeDetail();
-    });
+$("#btnCloseDetail").addEventListener("click", closeDetail);
+$("#detailBackdrop").addEventListener("click", (ev)=>{
+  if (ev.target === $("#detailBackdrop")) closeDetail();
+});
 
-    $("#btnQtyMinus").addEventListener("click", ()=>{
-      state.detail.qty = Math.max(1, state.detail.qty - 1);
-      renderDetail();
-    });
-    $("#btnQtyPlus").addEventListener("click", ()=>{
-      state.detail.qty = state.detail.qty + 1;
-      renderDetail();
-    });
+$("#btnQtyMinus").addEventListener("click", ()=>{
+  state.detail.qty = Math.max(1, state.detail.qty - 1);
+  renderDetail();
+});
+$("#btnQtyPlus").addEventListener("click", ()=>{
+  state.detail.qty = state.detail.qty + 1;
+  renderDetail();
+});
 
-    $("#btnConfirmDetail").addEventListener("click", ()=>{
-      if (state.detail.mode === "add"){
-addItem({ name: state.detail.name, img: state.detail.img, emoji: state.detail.emoji || "", qty: state.detail.qty });
-        closeDetail();
-      }else{
-        updateItem(state.detail.itemId, { qty: state.detail.qty });
-        closeDetail();
-      }
-    });
+$("#btnConfirmDetail").addEventListener("click", ()=>{
+  if (state.detail.mode === "add"){
+    addItem({ name: state.detail.name, img: state.detail.img, emoji: state.detail.emoji || "", qty: state.detail.qty });
+    closeDetail();
+  }else{
+    updateItem(state.detail.itemId, { qty: state.detail.qty });
+    closeDetail();
+  }
+});
 
-    $("#btnDeleteItem").addEventListener("click", ()=>{
-      if (state.detail.mode !== "edit") return;
-      deleteItem(state.detail.itemId);
-      closeDetail();
-    });
+$("#btnDeleteItem").addEventListener("click", ()=>{
+  if (state.detail.mode !== "edit") return;
+  deleteItem(state.detail.itemId);
+  closeDetail();
+});
 
-    $("#btnDeleteList").addEventListener("click", ()=>{
-      $("#dlgDeleteList").showModal();
-    });
-    $("#dlgCancel").addEventListener("click", ()=>$("#dlgDeleteList").close());
-    $("#dlgConfirm").addEventListener("click", ()=>{
-      $("#dlgDeleteList").close();
-      clearList();
-    });
+$("#btnDeleteList").addEventListener("click", ()=>{
+  $("#dlgDeleteList").showModal();
+});
+$("#dlgCancel").addEventListener("click", ()=>$("#dlgDeleteList").close());
+$("#dlgConfirm").addEventListener("click", ()=>{
+  $("#dlgDeleteList").close();
+  clearList();
+});
 
-    window.addEventListener("online", render);
-    window.addEventListener("offline", render);
+/* ===== listeners ARREGLADOS: al volver online, intenta nube; offline no rompe ===== */
+window.addEventListener("online", async ()=>{
+  render();
+  await cloudInit(state);
+});
+window.addEventListener("offline", ()=>{
+  render();
+});
 
-    // Arranque:
-    // - Por defecto: SEARCH
-    // - Si viene con ?list= : al cargar nube, cambiamos a LIST
-    function boot(){
-      loadStateFromStorage();
-      state.activeScreen = "search";
-      render();
-      cloudInit(state);
-    }
-    boot();
-  </script>
+/* ===== boot ARREGLADO: offline-first ===== */
+async function boot(){
+  loadStateFromStorage();
+  state.activeScreen = "search";
+  render();
+
+  if (navigator.onLine){
+    await cloudInit(state);
+  }
+}
+boot();
+
+</script>
 
   <script>
     if ("serviceWorker" in navigator) {
